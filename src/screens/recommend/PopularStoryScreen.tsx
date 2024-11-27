@@ -1,3 +1,4 @@
+import { NavigationProp, useNavigation } from '@react-navigation/native';
 import React, { useState } from 'react';
 import {
   View,
@@ -11,6 +12,7 @@ import {
 } from 'react-native';
 import Animated, { useSharedValue, withTiming, useAnimatedStyle, runOnJS, useDerivedValue } from 'react-native-reanimated';
 import Carousel from 'react-native-reanimated-carousel';
+import { RootStackParamList } from '../../navigation/AppNavigator';
 
 const { width: screenWidth } = Dimensions.get('window');
 
@@ -63,6 +65,7 @@ const imageData: ImageData[] = [
 ];
 
 const RecommendScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const activeIndex = useSharedValue(0);
   const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -85,6 +88,14 @@ const RecommendScreen: React.FC = () => {
     </View>
   );
 
+  const navigateToPlayScreen = () => {
+    // PlayScreen으로 네비게이트 (예시로 현재 선택된 스토리 데이터를 전달)
+    navigation.navigate('PlayScreen', {
+      story: { id: imageData[currentIndex].id, title: imageData[currentIndex].title, content: '동화 내용 예시' },
+      isFromCreation: false
+    });
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <Carousel
@@ -104,7 +115,7 @@ const RecommendScreen: React.FC = () => {
         }}
       />
 
-      <TouchableOpacity style={styles.button}>
+      <TouchableOpacity style={styles.button} onPress={navigateToPlayScreen}>
         <Text style={styles.buttonText}>동화 보러가기</Text>
       </TouchableOpacity>
     </SafeAreaView>

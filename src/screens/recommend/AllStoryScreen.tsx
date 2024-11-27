@@ -1,25 +1,46 @@
+// AllStoryScreen.tsx
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { SafeAreaView, Text } from 'react-native';
+import AllStory from './allstory/AllStory';
+import LevelOneStory from './allstory/LevelOneStory';
+import LevelTwoStory from './allstory/LevelTwoStory';
+import LevelThreeStory from './allstory/LevelThreeStory';
 
-const AllStoryScreen = () => {
-  return (
-    <View style={styles.container}>
-      <Text style={styles.text}>This is All Story Page!</Text>
-      {/* 도서관에 관한 정보를 여기에 표시할 수 있습니다 */}
-    </View>
-  );
-};
+const TopTab = createMaterialTopTabNavigator();
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  text: {
-    fontSize: 24,
-    fontWeight: 'bold',
-  },
-});
+const AllStoryScreen: React.FC = () => (
+  <SafeAreaView style={{ flex: 1 }}>
+    <TopTab.Navigator
+      initialRouteName="AllStory"
+      screenOptions={{
+        tabBarStyle: { backgroundColor: '#f0f0f0' },
+        tabBarIndicatorStyle: { backgroundColor: '#000', height: 3 },
+        tabBarLabelStyle: { fontSize: 16, textTransform: 'none' },
+      }}
+    >
+      <TopTab.Screen
+        name="AllStory"
+        component={AllStory}
+        options={{ tabBarLabel: () => <Text>전체</Text> }}
+      />
+      <TopTab.Screen
+        name="LevelOneStory"
+        component={LevelOneStory}
+        options={{ tabBarLabel: () => <Text>레벨1</Text> }}
+      />
+      <TopTab.Screen
+        name="LevelTwoStory"
+        component={LevelTwoStory}
+        options={{ tabBarLabel: () => <Text>레벨2</Text> }}
+      />
+      <TopTab.Screen
+        name="LevelThreeStory"
+        component={LevelThreeStory}
+        options={{ tabBarLabel: () => <Text>레벨3</Text> }}
+      />
+    </TopTab.Navigator>
+  </SafeAreaView>
+);
 
 export default AllStoryScreen;

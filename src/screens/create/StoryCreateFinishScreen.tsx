@@ -1,178 +1,377 @@
-import React, {useEffect, useState} from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Modal, BackHandler } from 'react-native';
+// StoryCreateFinishScreen.tsx
+import React, { useEffect, useState } from 'react';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  SafeAreaView,
+  ScrollView,
+  Modal,
+  Image,
+  BackHandler,
+} from 'react-native';
+import Icon from 'react-native-vector-icons/Feather';
 import { TextInput } from 'react-native-gesture-handler';
+import { useRoute, useNavigation, CommonActions } from '@react-navigation/native';
+import { Switch } from 'react-native-switch';
+import { getRequest, patchRequest } from '../../api/apiManager';
 
-const StoryCreateFinishScreen = ({route, navigation } : any) => {
-  const {story} = route.params;
+const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
+  const { story, memberID } = route.params;
 
   useEffect(() => {
-    const backAction =() => {
+    const maxRetries = 10; // 최대 재시도 횟수
+    let retries = 0; // 현재 시도 횟수
+
+    const fetchTtsLink = async () => {
+      try {
+        const response = await getRequest(`api/stories/tts/${story.id}`);
+        console.log("API 응답 데이터:", response); // 응답 확인
+
+        if (response) {
+          setTtsLink(response); // TTS 링크 설정
+          setIsLoading(false); // 로딩 상태 해제
+          return;
+        } else{
+          console.log("TTS 생성 중...");
+        }
+      } catch (error) {
+        console.error("Error fetching TTS link:", error);
+      }
+      
+      if (retries < maxRetries) {
+        retries += 1;
+        console.log(story.id)
+        setTimeout(fetchTtsLink, 5000); // 5초 간격으로 재시도
+      } else {
+        setIsLoading(false); // 최대 시도 후 로딩 해제
+        console.warn("TTS 링크를 찾을 수 없습니다.");
+      }
+    };
+
+    fetchTtsLink();
+
+    const backAction = () => {
       navigation.navigate('Home');
       return true;
     };
-    const backHandler = BackHandler.addEventListener(
-      'hardwareBackPress',
-      backAction
-    );
+  
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', backAction);
     return () => backHandler.remove();
-  },[navigation])
+  }, [navigation]);
+
+
+  
 
   const [isEditing, setIsEditing] = useState(false);
-  const [title, setTitle] = useState('story.title');
+  const [title, setTitle] = useState(story.title);
   const [tempTitle, setTempTitle] = useState(title);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [postStatus, setPostStatus] = useState<null | 'yes' | 'no'>(null);
-  const [tag, setTag] = useState('');
-
-  const playStory = () =>{
-    navigation.navigate('Play');
-  };
+  const [tags, setTags] = useState<string[]>(['#공룡이', '#교육']);
+  const [tagInput, setTagInput] = useState('');
+  const [isPublished, setIsPublished] = useState(false);
+  const [ttsLink, setTtsLink] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const handleEditPress = () => {
-    setTempTitle('');
+    setTempTitle(title);
     setIsEditing(true);
   };
 
   const handleSavePress = () => {
-    if(tempTitle.trim() !== ''){
+    if (tempTitle.trim() !== '') {
       setTitle(tempTitle);
     }
     setIsEditing(false);
   };
 
+  const addTag = () => {
+    if (tagInput.trim()) {
+      setTags([...tags, `#${tagInput.trim()}`]);
+      setTagInput('');
+    }
+  };
+
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
+  };
+
   const openModal = () => setIsModalVisible(true);
   const closeModal = () => setIsModalVisible(false);
 
-  const handletag = () => {
-    setTag(tag);
-  }
+  const patchAndPlayStory = async () => {
+    const titleModified = title !== story.title;
+    const tagsModified = tags.length > 0;
+    const isPublicModified = isPublished;
+
+    if (titleModified || tagsModified || isPublicModified) {
+      try {
+        const response = await patchRequest(`/api/stories/1/${story.id}`, {
+          title,
+          isPublic: isPublished,
+          tags,
+        });
+        console.log("API Patch Response: ", response.data);
+      } catch (error) {
+        console.error("API 호출 오류: ", error);
+      }
+    }
+
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 1,
+        routes: [
+          { name: 'MainTabs', params: { screen: 'HomeNav', params: { screen: 'Home' } } },
+          { name: 'PlayScreen', params: { story, isFromCreation: true, ttsLink } },
+        ],
+      })
+    );
+  };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <ScrollView contentContainerStyle={styles.container}>
-        {/* 제목 섹션 */}
-        <View style={styles.row}>
-          <Text style={styles.label}>제목</Text>
-          <View style={styles.inlineRow}>
-            {isEditing ? (
-              <TextInput
-              style={styles.input}
-              value={tempTitle}
-              onChangeText={setTempTitle}
-              placeholder={title}
-              />
-            ) : (
-              <Text style={styles.content}>{title}</Text>
-            )}
-            <TouchableOpacity style={styles.smallButton}
-            onPress={isEditing ? handleSavePress : handleEditPress}
-            >
-              <Text style={styles.buttonText}>
-                {isEditing ? '완료' : '수정'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+    <SafeAreaView style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollView}>
+        <View style={styles.card}>
+          <Image source={require('../../assets/images/cover2.png')} style={styles.storyImage} resizeMode="cover" />
 
-        {/* 내용 섹션 */}
-        <View style={styles.row}>
-          <Text style={styles.label}>내용</Text>
-          <TouchableOpacity style={styles.smallButton} onPress={openModal}>
-            <Text style={styles.buttonText}>상세 보기</Text>
-          </TouchableOpacity>
-        </View>
-
-        <Modal
-        visible={isModalVisible}
-        transparent={true}
-        animationType="slide"
-        onRequestClose={closeModal}
-        >
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalContent}>
-              <Text style={styles.modalText}>{story.content}</Text>
-              <TouchableOpacity style={styles.modalButton} onPress={closeModal}>
-                <Text style={styles.buttonText}>닫기</Text>
+          {/* Title Section */}
+          <View style={styles.titleContainer}>
+            <View style={styles.titleRow}>
+              <Text style={styles.label}>제목</Text>
+              {isEditing ? (
+                <TextInput style={styles.titleInput} value={tempTitle} onChangeText={setTempTitle} multiline />
+              ) : (
+                <Text style={styles.title}>{title}</Text>
+              )}
+              <TouchableOpacity onPress={isEditing ? handleSavePress : handleEditPress}>
+                <Icon name="edit-2" size={20} color="#4B5563" />
               </TouchableOpacity>
             </View>
           </View>
-        </Modal>
 
-        {/* 태그 섹션 */}
-        <View style={styles.row}>
-          <Text style={styles.label}>태그</Text>
-          <TextInput
-          style={styles.input}
-          value={tag}
-          onChangeText={setTag}
-          placeholder='태그를 입력하세요'
-          />
-        </View>
-
-        {/* 게시판 거부 유무 */}
-        <View style={styles.column}>
-          <Text style={styles.postYesOrNo}>게시판 게재 유무</Text>
-          <View style={styles.buttonRow}>
-            <TouchableOpacity style={[styles.yesButton,
-              postStatus === 'yes' && styles.activeYesButton,
-            ]}
-            onPress={() => setPostStatus('yes')}>
-              <Text style={styles.buttonText}>YES</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.noButton,
-              postStatus === 'no' && styles.activeNoButton,
-            ]}
-            onPress={() => setPostStatus('no')}>
-              <Text style={styles.buttonText}>NO</Text>
+          {/* Preview Section */}
+          <View style={styles.previewContainer}>
+            <TouchableOpacity onPress={openModal}>
+              <Text style={styles.detailText}>내용 미리보기</Text>
             </TouchableOpacity>
           </View>
-        </View>
 
-        {/* 재생 버튼 */}
-        <TouchableOpacity style={styles.playButton} onPress={playStory}>
-          <Text style={styles.buttonText}>재생</Text>
-        </TouchableOpacity>
+          <Modal visible={isModalVisible} transparent={true} animationType="slide" onRequestClose={closeModal}>
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContent}>
+                <ScrollView contentContainerStyle={styles.scrollContent}>
+                  <Text style={styles.modalText}>{story.content}</Text>
+                </ScrollView>
+                <TouchableOpacity style={styles.modalButton} onPress={closeModal}>
+                  <Text style={styles.buttonText}>닫기</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
+          {/* Tags Section */}
+          <View style={styles.tagsContainer}>
+            <Text style={styles.label}>태그</Text>
+            <View style={styles.tagsList}>
+              {tags.map((tag, index) => (
+                <TouchableOpacity key={index} style={styles.tag} onPress={() => removeTag(tag)}>
+                  <Text style={styles.tagText}>{tag}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.tagInputContainer}>
+              <TextInput
+                style={styles.tagInput}
+                value={tagInput}
+                onChangeText={setTagInput}
+                placeholder="태그를 입력하세요"
+              />
+              <TouchableOpacity style={styles.addTagButton} onPress={addTag}>
+                <Text style={styles.addTagText}>+ 추가</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+
+          {/* Publish Toggle */}
+          <View style={styles.toggleContainer}>
+            <Text style={styles.toggleText}>동화 게시하기</Text>
+            <Switch
+              value={isPublished}
+              onValueChange={(val) => setIsPublished(val)}
+              circleSize={24}
+              barHeight={30}
+              circleBorderWidth={0}
+              backgroundActive="#6366F1"
+              backgroundInactive="#D1D5DB"
+              circleActiveColor="#FFFFFF"
+              circleInActiveColor="#FFFFFF"
+              renderActiveText={false}
+              renderInActiveText={false}
+            />
+          </View>
+
+          {/* Play Button */}
+          <TouchableOpacity style={[styles.playButton, isLoading && styles.disabledButton]} onPress={patchAndPlayStory} disabled={isLoading}>
+            <Icon name="play" size={20} color="#FFFFFF" style={styles.playIcon} />
+            <Text style={styles.playButtonText}>동화 재생</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-  },
   container: {
-    padding: 20,
-    alignItems: 'stretch',
+    flex: 1,
+    backgroundColor: '#F3F4F6',
+  },
+  scrollView: {
+    flexGrow: 1,
     justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingBottom: 16,
   },
-  row: {
+  scrollContent: {
+    paddingBottom: 20, // 스크롤 영역의 여백 설정
+  },
+  card: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    flex: 1,
+    padding: 16,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  storyImage: {
+    width: '100%',
+    height: 200,
+    borderRadius: 12,
+    marginBottom: 16,
+  },
+  titleContainer: {
+    marginBottom: 16,
+  },
+  titleRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  inlineRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 10, // 텍스트와 버튼 간의 간격
-  },
-  column: {
-    marginBottom: 20,
-    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   label: {
     fontSize: 16,
-    fontWeight: 'bold',
-    width: 70, // 고정된 너비로 정렬이 더 명확해짐
+    fontWeight: '600',
+    color: '#4B5563',
+    marginRight: 14,
+    marginLeft: 8
   },
-  input: {
+  title: {
+    flex: 1,
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#1F2937',
+  },
+  titleInput: {
+    flex: 1,
     fontSize: 18,
     borderBottomWidth: 1,
     borderColor: '#ccc',
-    marginRight: 10,
     paddingVertical: 2,
-    width: 150,
+  },
+  previewContainer: {
+    backgroundColor: '#F3F4F6',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 16,
+  },
+  previewText: {
+    color: '#6B7280',
+    fontSize: 14,
+  },
+  detailText: {
+    color: '#6366F1',
+    fontSize: 14,
+    marginTop: 8,
+    textAlign: 'center'
+  },
+  tagsContainer: {
+    marginTop: 8,
+    marginBottom: 16,
+  },
+  tagsList: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+  },
+  tag: {
+    backgroundColor: '#EEF2FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginBottom: 8,
+  },
+  tagText: {
+    color: '#6366F1',
+    fontSize: 14,
+  },
+  tagInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  tagInput: {
+    flex: 1,
+    fontSize: 16,
+    borderBottomWidth: 1,
+    borderColor: '#ccc',
+    paddingVertical: 2,
+    marginRight: 8,
+  },
+  addTagButton: {
+    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+  },
+  addTagText: {
+    color: '#6B7280',
+    fontSize: 14,
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+    marginTop: 10
+  },
+  toggleText: {
+    fontSize: 16,
+    fontWeight: '500',
+    color: '#1F2937',
+  },
+  playButton: {
+    backgroundColor: '#10B981',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginTop: 'auto',
+  },
+  playIcon: {
+    marginRight: 8,
+  },
+  playButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  disabledButton:{
+    backgroundColor: '#B0B0B0'
   },
   modalOverlay: {
     flex: 1,
@@ -182,8 +381,10 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '80%',
+    height: '80%',
     backgroundColor: 'white',
     padding: 20,
+    paddingBottom: 20,
     borderRadius: 10,
     alignItems: 'center',
   },
@@ -198,59 +399,8 @@ const styles = StyleSheet.create({
     width: '50%',
     alignItems: 'center',
   },
-  postYesOrNo:{
-    fontSize: 16,
-    fontWeight: 'bold',
-    width: 120,
-    alignSelf: 'center',
-  },
-  content: {
-    fontSize: 18,
-    marginRight: 10, // 텍스트와 버튼 사이 간격 확보
-  },
-  smallButton: {
-    backgroundColor: '#CCCCCC',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 5,
-  },
   buttonText: {
     fontSize: 14,
-  },
-  buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '60%',
-    marginTop: 10,
-  },
-  yesButton: {
-    backgroundColor: '#CCCCCC',
-    padding: 10,
-    borderRadius: 5,
-    width: '45%',
-    alignItems: 'center',
-  },
-  noButton: {
-    backgroundColor: '#CCCCCC',
-    padding: 10,
-    borderRadius: 5,
-    width: '45%',
-    alignItems: 'center',
-  },
-  activeYesButton: {
-    backgroundColor: 'blue',
-  },
-  activeNoButton: {
-    backgroundColor: 'red',
-  },
-  playButton: {
-    backgroundColor: '#CCCCCC',
-    padding: 15,
-    borderRadius: 5,
-    alignItems: 'center',
-    width: '50%',
-    alignSelf: 'center',
-    marginTop: 20,
   },
 });
 

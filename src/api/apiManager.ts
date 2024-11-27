@@ -3,8 +3,8 @@ import axios from 'axios';
 
 // 기본 Axios 인스턴스 생성
 const api = axios.create({
-  baseURL: 'http://192.168.37.216:8080', // 백엔드 서버 주소
-  timeout: 5000,
+  baseURL: 'http://3.35.49.154/', // 백엔드 서버 주소
+  timeout: 30000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -12,13 +12,20 @@ const api = axios.create({
 
 // 오류 처리 함수
 const handleError = (error: any) => {
-  console.error('API 호출 오류:', error);
+  console.error('API 호출 오류:', error.toJSON ? error.toJSON() : error);
   if (error.response) {
+    console.log('Response data:', error.response.data);
+    console.log('Response status:', error.response.status);
+    console.log('Response headers:', error.response.headers);
     throw error.response.data;
+  } else if (error.request) {
+    console.log('Request:', error.request);
+    throw new Error('서버와의 연결이 불안정합니다.');
   } else {
     throw new Error(error.message);
   }
 };
+
 
 // **GET 요청**: 데이터 조회
 export const getRequest = async (endpoint: string, params = {}) => {

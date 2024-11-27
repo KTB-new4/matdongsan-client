@@ -1,225 +1,353 @@
 import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, StatusBar, SafeAreaView, Button, Alert } from 'react-native';
-import { GestureHandlerRootView, TextInput } from 'react-native-gesture-handler';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, SafeAreaView, Image, Alert } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
 import { postRequest } from '../../api/apiManager';
+import Icon from 'react-native-vector-icons/Ionicons';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 
-const HomeScreen = ({navigation } : any) => {
-  const [isKorean, setIsKorean] = useState(true);  // 한글/English 토글 상태
-  const [selectedChild, setSelectedChild] = useState('');  // 드롭다운 선택된 자녀
-  const [writePrompt, setwritePrompt] = useState(''); // 입력 프롬프트
+const HomeScreen = ({ navigation }: any) => {
+  const [isKorean, setIsKorean] = useState(true);
+  const [writePrompt, setWritePrompt] = useState('');
+  const [selectedChild, setSelectedChild] = useState('');
   const [loading, setLoading] = useState(false);
+  const togglePosition = useSharedValue(0);
 
-  // 한글/English 토글 스위치 상태 변경
+  const storyPrompts = [
+    { title: '공룡 박사인 아이에게 보여 주고 싶어요.', description: '공룡에 관한 내용 위주로 동화를 만들어드려요'},
+    { title: '동생이 생겼을 때 어려 감정이 들 수 있음을 느끼게 해주고 싶어요.', description: '동생과의 활동이 포함된 동화를 만들어드려요'},
+    { title: '아빠와 재미있게 읽을 수 있는 책을 고르고 싶어요.', description: '아빠와 같이 읽으면 재밌는 동화를 만들어드려요'},
+    { title: '공격적인 행동을 되돌아보도록 계기를 만들어주고 싶어요.', description: '공룡에 관한 내용위주로 동화를 만들어드려요'},
+  ];
+
   const toggleLanguage = () => {
     setIsKorean(!isKorean);
-  };
+    togglePosition.value = isKorean ? 60 : 0;
+  }
 
-  const handleGenerate = async() => {
-    if(!writePrompt.trim() || !selectedChild){
+  const animatedCircleStyle = useAnimatedStyle(() => {
+    return{
+      transform: [{ translateX: withTiming(togglePosition.value, { duration : 300})}],
+    };
+  });
+
+  const handleGenerate = async () => {
+    if (!writePrompt.trim() || !selectedChild) {
       Alert.alert('오류', '모든 필드를 채워주세요.');
       return;
     }
 
     setLoading(true);
-    try{
+    navigation.navigate('Loading', { response: null });
+
+    try {
       const data = {
         language: isKorean ? 'ko' : 'en',
         age: parseInt(selectedChild),
         given: writePrompt,
       };
 
-      const response = await postRequest('/api/stories', data);
-      console.log('API 응답: ', response);
-
-      navigation.navigate('Loading', {
-        response,
-        onComplete: () => navigation.replace('StoryCreateFinish', { story : response}),
-      });
-    }
-    catch(error){
+      const response = await postRequest('api/stories/1', data);
+      console.log('API 응답 : ', response);
+      navigation.replace('Loading', { response });
+    } catch (error) {
       Alert.alert('오류', `동화 생성 실패: ${error}`);
-    }
-    finally{
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <GestureHandlerRootView>
-      <SafeAreaView style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
-        <View style={styles.row}>
-          {/* 한글/English 토글 스위치 */}
-          <TouchableOpacity style={styles.switchContainer} onPress={toggleLanguage}>
-            <View
-              style={[
-                styles.switch,
-                isKorean ? styles.switchOn : styles.switchOff,
-              ]}
-            >
-              <Text
-                style={[
-                  styles.text,
-                  isKorean ? styles.textOn : styles.textOff,
-                ]}
-              >
-                {isKorean ? '한글' : 'English'}
-              </Text>
-              <View
-                style={[
-                  styles.circle,
-                  isKorean ? styles.circleOn : styles.circleOff,
-                ]}
-              />
-            </View>
-          </TouchableOpacity>
-
-          {/* 자녀 선택 드롭다운 */}
-          <View style={styles.pickerContainer}>
-            <RNPickerSelect
-              onValueChange={(value) => setSelectedChild(value)}
-              items={[
-                { label: 'Child 1', value: '1' },
-                { label: 'Child 2', value: '2' },
-                { label: 'Child 3', value: '3' },
-              ]}
-              style={{
-                inputAndroid: styles.pickerText,
-                inputIOS: styles.pickerText,
-              }}
-              placeholder={{ label: 'Select Child', value: '' }}
-            />
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.languageContainer}>
+          <RNPickerSelect
+            onValueChange={(value) => setSelectedChild(value)}
+            items={[
+              { label: '진아', value: '3' },
+              { label: '진혁', value: '8' },
+              { label: '은혁', value: '5' },
+            ]}
+            style={pickerSelectStyles}
+            placeholder={{ label: '자녀 선택', value: '' }}
+          />
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity onPress={toggleLanguage} style={styles.toggleButton}>
+              <Animated.View style={[styles.circle, animatedCircleStyle]} />
+                <Text style={[styles.toggleText, isKorean ? styles.textRight : styles.textLeft]}>
+                {isKorean ? '한국어' : 'English'}</Text>
+            </TouchableOpacity>
           </View>
         </View>
+      </View>
 
-        {/* 선택된 자녀와 언어에 따른 내용 표시 */}
-        <View style={styles.content}>
-          <TextInput
-            style={styles.input}
-            autoCapitalize="none"
-            value={writePrompt}
-            onChangeText={setwritePrompt}
-            placeholder="AI에게 보낼 프롬프트를 입력하세요"
-          ></TextInput>
-          <TouchableOpacity onPress={handleGenerate} style={styles.createbutton}>
-            <Text>동화 생성</Text>
-          </TouchableOpacity>
-          <Text style={styles.statusText}>
-            {isKorean
-              ? '현재 선택된 언어: 한글'
-              : 'Current Language: English'}
-          </Text>
-          {selectedChild ? (
-            <Text style={styles.statusText}>
-              선택된 자녀: {selectedChild}
-            </Text>
-          ) : (
-            <Text style={styles.statusText}>자녀를 선택하세요.</Text>
-          )}
-        </View>
-      </SafeAreaView>
-    </GestureHandlerRootView>
+      {/* Title Section */}
+      <View style={styles.titleContainer}>
+        <Image
+          source={require('../../assets/images/profileimage.png')}
+          style={styles.characterIcon}
+        />
+        <Text style={styles.title}>어떤 동화를{'\n'}만들어볼까요?</Text>
+      </View>
+
+      {/* Prompt Input */}
+      <View style={styles.searchContainer}>
+        <Icon name="search" size={20} color="#999" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="주제를 입력해주세요 :)"
+          value={writePrompt}
+          onChangeText={setWritePrompt}
+          placeholderTextColor="#999"
+          onSubmitEditing={handleGenerate}
+          multiline
+          returnKeyType="done"
+          autoCapitalize='none'
+          onKeyPress={({ nativeEvent }) => {
+            if (nativeEvent.key === 'Enter') {
+              handleGenerate(); // Enter를 누르면 handleGenerate 호출
+              return false; // 줄바꿈 방지
+            }
+          }}
+        />
+        {/* <TouchableOpacity style={styles.generateButton} onPress={handleGenerate}>
+          <Text style={styles.generateButtonText}>생성</Text>
+        </TouchableOpacity> */}
+      </View>
+
+      {/* Story Prompts */}
+      <View style={styles.promptsContainer}>
+        {storyPrompts.map((prompt, index) => (
+          <View
+            key={index}
+            style={[styles.promptCard]}
+          >
+            <View style={styles.promptIconContainer}>
+              <MaterialCommunityIcons name="google-downasaur" size = {32} color = "#9EA5FF"/>
+            </View>
+            <View style={styles.promptTextContainer}>
+              <Text style={styles.promptDescription}>{prompt.description}</Text>
+              <Text style={styles.promptTitle}>{prompt.title}</Text>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      {/* Help Button */}
+      <TouchableOpacity style={styles.helpButton}>
+        <Text style={styles.helpButtonText}>?</Text>
+      </TouchableOpacity>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#ffffff',
+    backgroundColor: '#F8F9FF',
   },
-  row: {
-    flexDirection: 'row', // 한 줄로 배치
-    alignItems: 'center', // 세로축에서 중앙 정렬
-    marginTop: 20,
-    marginLeft: 20,
+  header: {
+    padding: 16,
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
-  switchContainer: {
+  languageContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  toggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F0F1FF',
+    borderRadius: 20,
+    padding: 4,
+    marginLeft: 8,
+  },
+  toggleOption: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 16,
+  },
+  toggleOptionActive: {
+    backgroundColor: '#FFFFFF',
+  },
+  toggleOptionInactive: {
+    backgroundColor: 'transparent',
+  },
+  toggleButton: {
     width: 100,
     height: 40,
-    borderRadius: 30,
+    borderRadius: 20,
+    backgroundColor: '#A3A8FE',
     justifyContent: 'center',
-    marginRight: 20, // 요소 간의 간격 설정
-  },
-  switch: {
-    width: '100%',
-    height: '100%',
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
     paddingHorizontal: 5,
-  },
-  switchOn: {
-    backgroundColor: '#4cd137', // 활성 상태일 때 색상
-  },
-  switchOff: {
-    backgroundColor: '#dfe6e9', // 비활성 상태일 때 색상
   },
   circle: {
     width: 30,
     height: 30,
-    borderRadius: 25,
-    backgroundColor: 'white',
+    borderRadius: 15,
+    backgroundColor: '#FFFFFF',
     position: 'absolute',
+    left: 4,
   },
-  circleOn: {
-    left: 5, // 활성 상태일 때 왼쪽 끝에 원이 위치
-  },
-  circleOff: {
-    right: 5, // 비활성 상태일 때 오른쪽 끝에 원이 위치
-  },
-  text: {
-    fontSize: 15,
+  toggleText: {
     position: 'absolute',
-  },
-  textOn: {
-    right: 10, // 활성 상태일 때 텍스트 위치
-    color: 'white',
-  },
-  textOff: {
-    left: 10, // 비활성 상태일 때 텍스트 위치
-    color: '#2d3436',
-  },
-  pickerContainer: {
-    width: 100,
-    height: 40,
-    borderRadius: 30,
-    borderWidth: 1,
-    borderColor: '#dfe6e9',
-    justifyContent: 'center',
-  },
-  pickerText: {
-    fontSize: 16,
-    color: '#2d3436',
-    paddingHorizontal: 10,
-  },
-  content: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 40,
-  },
-  statusText: {
-    fontSize: 25,
+    alignSelf: 'center',
+    color: '#FFFFFF',
+    fontSize: 12,
     fontWeight: 'bold',
   },
-  input: {
-    width: '90%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 8,
-    marginBottom: 16,
+  textLeft: {
+    left: 15, // English일 때 텍스트가 왼쪽에 위치
   },
-  createbutton:{
-    backgroundColor: '#D3D3D3',
-    padding: 15,
-    borderRadius: 10,
-    width: '50%',
+  textRight: {
+    right: 20, // 한국어일 때 텍스트가 오른쪽에 위치
+  },
+  toggleTextActive: {
+    color: '#333',
+  },
+  toggleTextInactive: {
+    color: '#666',
+  },
+  titleContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
-  }
+    padding: 16,
+    paddingTop: 8,
+  },
+  characterIcon: {
+    width: 40,
+    height: 40,
+    marginRight: 20,
+    marginLeft: 10
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    lineHeight: 32,
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    margin: 16,
+    marginTop: 8,
+    borderRadius: 12,
+    padding: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#333',
+  },
+  generateButton: {
+    backgroundColor: '#4A90E2',
+    alignSelf: 'stretch',
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    borderTopRightRadius: 25,
+    borderBottomRightRadius: 25,
+  },
+  generateButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  promptsContainer: {
+    padding: 16,
+    paddingTop: 8,
+  },
+  promptCard: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 15,
+    padding: 16,
+    marginBottom: 12,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  promptIconContainer: {
+    width: 40,
+    height: 40,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  promptEmoji: {
+    fontSize: 20,
+  },
+  promptTextContainer: {
+    flex: 1,
+  },
+  promptTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333333',
+  },
+  promptDescription: {
+    fontSize: 12,
+    color: '#A0A0A0',
+    marginBottom: 4,
+  },
+  helpButton: {
+    position: 'absolute',
+    right: 16,
+    bottom: 10,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#6B4EFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  helpButtonText: {
+    color: '#FFFFFF',
+    fontSize: 24,
+    fontWeight: 'bold',
+  },
+});
+
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    fontSize: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 20,
+    color: '#333',
+    paddingRight: 30,
+    backgroundColor: '#FFFFFF',
+    marginLeft: 8,
+    height: 45,
+    alignItems: 'center'
+  },
+  inputAndroid: {
+    fontSize: 14,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderRadius: 10,
+    color: '#333',
+    paddingRight: 30,
+    backgroundColor: '#FFFFFF',
+    marginLeft: 8,
+    height: 30,
+  },
 });
 
 export default HomeScreen;

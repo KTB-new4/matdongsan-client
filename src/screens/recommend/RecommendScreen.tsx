@@ -1,16 +1,23 @@
+// RecommendScreen.tsx
 import React from 'react';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
+import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { SafeAreaView, StyleSheet, Text } from 'react-native';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import PopularStoryScreen from './PopularStoryScreen';
 import LatestStoryScreen from './LatestStoryScreen';
 import AllStoryScreen from './AllStoryScreen';
 
-// 상단 탭 네비게이터 생성
+type RecommendStackParamList = {
+  RecommendScreen: undefined;
+  AllStoryScreen: undefined;
+};
+
 const TopTab = createMaterialTopTabNavigator();
 
-const RecommendScreen: React.FC = () => (
-  <GestureHandlerRootView style={{ flex: 1 }}>
+const RecommendScreen: React.FC = () => {
+  const navigation = useNavigation<NavigationProp<RecommendStackParamList>>();
+
+  return (
     <SafeAreaView style={{ flex: 1 }}>
       <TopTab.Navigator
         initialRouteName="Popular"
@@ -22,7 +29,7 @@ const RecommendScreen: React.FC = () => (
         tabBarPosition="top"
       >
         <TopTab.Screen
-          name="Popular"
+          name="PopularStory"
           component={PopularStoryScreen}
           options={{ tabBarLabel: () => <Text>인기 동화</Text> }}
         />
@@ -33,13 +40,19 @@ const RecommendScreen: React.FC = () => (
         />
         <TopTab.Screen
           name="AllStory"
-          component={AllStoryScreen}
+          component={AllStoryScreen} // 빈 컴포넌트를 설정하거나 원하는 초기 화면을 넣을 수 있습니다.
           options={{ tabBarLabel: () => <Text>전체 동화</Text> }}
+          listeners={{
+            tabPress: e => {
+              e.preventDefault(); // 기본 탭 이동을 방지
+              navigation.navigate('AllStoryScreen'); // AllStoryScreen으로 이동
+            },
+          }}
         />
       </TopTab.Navigator>
     </SafeAreaView>
-  </GestureHandlerRootView>
-);
+  );
+};
 
 const styles = StyleSheet.create({
   tabBar: {

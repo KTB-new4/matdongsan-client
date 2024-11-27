@@ -5,13 +5,10 @@ const LoadingScreen = ({ route, navigation }: any) => {
   const { response } = route.params;
 
   useEffect(() => {
-    // 3초 후에 StoryCreateFinishScreen으로 이동
-    const timer = setTimeout(() => {
-      navigation.replace('Create Finish', { story: response });
-    }, 3000);
-
-    return () => clearTimeout(timer); // 타이머 정리
-  }, [navigation, response]);
+    if(response){
+      navigation.replace('Create Finish', {story: response});
+    }
+  }, [response, navigation]);
 
   return (
     <View style={styles.container}>
