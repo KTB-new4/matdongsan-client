@@ -6,20 +6,21 @@ import { RootStackParamList } from '../../navigation/AppNavigator';
 
 type FollowStoryListRouteProp = RouteProp<RootStackParamList, 'FollowStoryList'>;
 
+// 프로필 이미지 경로
 const profileImage = require('../../assets/images/profileimage.png');
 
 const FollowStoryList: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList, 'StoryDetail'>>();
   const route = useRoute<FollowStoryListRouteProp>();
 
-  // 팔로워 정보 및 스토리 더미 데이터
-  const { nickname, followers } = route.params;
+  // 팔로워 정보 및 기본값 설정
+  const { nickname = 'Unknown User', followers = 0 } = route.params || {};
+
   const [stories, setStories] = useState([
     { id: '1', tag: '가족', title: '가족 이야기', author: '홍길동', likes: 1000 },
     { id: '2', tag: '사랑', title: '사랑 이야기', author: '김철수', likes: 1000 },
     { id: '3', tag: '우정', title: '우정 이야기', author: '홍길동', likes: 1000 },
     { id: '4', tag: '지혜', title: '지혜 이야기', author: '김철수', likes: 1000 },
-    // 더미 데이터 추가 가능
   ]);
 
   const renderItem = ({ item }: { item: typeof stories[0] }) => (
@@ -36,7 +37,10 @@ const FollowStoryList: React.FC = () => {
     <View style={styles.container}>
       {/* 팔로워 정보 섹션 */}
       <View style={styles.header}>
-        <Image source={profileImage} style={styles.profileImage} />
+        <Image
+          source={profileImage} // 경로 점검 완료
+          style={styles.profileImage}
+        />
         <View style={styles.userInfo}>
           <Text style={styles.nickname}>{nickname}</Text>
           <View style={styles.followersContainer}>

@@ -1,9 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, Image, TouchableOpacity, SafeAreaView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Image,
+  TouchableOpacity,
+  SafeAreaView,
+} from 'react-native';
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import FollowList from './FollowList';
 import ChildrenStatus from './ChildrenStatus';
 
+// 프로필 이미지 경로 확인 및 유지
 const profileImage = require('../../assets/images/profileimage.png');
 
 const Tab = createMaterialTopTabNavigator();
@@ -13,7 +21,11 @@ const MyProfileScreen = () => {
     <SafeAreaView style={styles.container}>
       {/* 사용자 정보 섹션 */}
       <View style={styles.profileContainer}>
-        <Image style={styles.profileImage} source={profileImage} />
+        {/* 프로필 이미지 */}
+        <Image
+          style={styles.profileImage}
+          source={profileImage} // profileimage.png 그대로 사용
+        />
         <View style={styles.userInfo}>
           <Text style={styles.username}>저쪽이</Text>
           <TouchableOpacity style={styles.changeButton}>
@@ -32,8 +44,18 @@ const MyProfileScreen = () => {
             tabBarInactiveTintColor: 'black',
           }}
         >
-          <Tab.Screen name="Follow" component={FollowList} options={{ tabBarLabel: '팔로우' }} />
-          <Tab.Screen name="ChildInfo" component={ChildrenStatus} options={{ tabBarLabel: '자녀정보' }} />
+          {/* FollowList 화면 */}
+          <Tab.Screen
+            name="Follow"
+            component={FollowList}
+            options={{ tabBarLabel: '팔로우' }}
+          />
+          {/* ChildrenStatus 화면 */}
+          <Tab.Screen
+            name="ChildInfo"
+            component={ChildrenStatus}
+            options={{ tabBarLabel: '자녀정보' }}
+          />
         </Tab.Navigator>
       </View>
     </SafeAreaView>
