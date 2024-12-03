@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Image, ViewStyle, TouchableOpacity } from 'react-native';
 
+// 로컬 이미지 경로
 const placeholderImage = require('../assets/images/profileimage.png');
 
 type FollowSummaryProps = {
@@ -10,10 +11,16 @@ type FollowSummaryProps = {
   onPress: () => void;
 };
 
-const FollowSummary: React.FC<FollowSummaryProps> = ({ nickname, followers, containerStyle, onPress }) => {
+const FollowSummary: React.FC<FollowSummaryProps> = ({
+  nickname = 'Unknown',
+  followers = 0,
+  containerStyle,
+  onPress,
+}) => {
   return (
     <TouchableOpacity style={[styles.container, containerStyle]} onPress={onPress}>
-      <Image source={{ uri: placeholderImage }} style={styles.image} />
+      {/* `uri` 대신 require로 직접 전달 */}
+      <Image source={placeholderImage} style={styles.image} />
       <Text style={styles.nickname}>{nickname}</Text>
       <View style={styles.likesContainer}>
         <Text style={styles.likeIcon}>❤️</Text>

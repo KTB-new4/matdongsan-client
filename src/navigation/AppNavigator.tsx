@@ -80,6 +80,7 @@ const MainTabNavigator = () => (
             <Image
               source={require('../assets/images/profileimage.png')}
               style={{ width: size, height: size, borderRadius: size / 2 }}
+              defaultSource={require('../assets/images/profileimage.png')} // 수정됨: 기본 이미지 추가
             />
           );
         }
@@ -105,6 +106,7 @@ const MainTabNavigator = () => (
           );
         },
       })}
+      key="HomeNav" // 수정됨: 명시적으로 key 추가
     />
     <Tab.Screen
       name="RecommendNav"
@@ -112,17 +114,18 @@ const MainTabNavigator = () => (
       options={{
         tabBarLabel: '추천 동화',
       }}
-      listeners={({navigation}) => ({
+      listeners={({ navigation }) => ({
         tabPress: (e) => {
           e.preventDefault();
           navigation.dispatch(
             CommonActions.reset({
               index: 0,
-              routes: [{name: 'RecommendNav', params: {screen: 'RecommendScreen'}}],
+              routes: [{ name: 'RecommendNav', params: { screen: 'RecommendScreen' } }],
             })
-          )
-        }
+          );
+        },
       })}
+      key="RecommendNav" // 수정됨: 명시적으로 key 추가
     />
     <Tab.Screen
       name="MyLibraryNav"
@@ -130,6 +133,7 @@ const MainTabNavigator = () => (
       options={{
         tabBarLabel: '내 도서관',
       }}
+      key="MyLibraryNav" // 수정됨: 명시적으로 key 추가
     />
     <Tab.Screen
       name="MyStatusNav"
@@ -137,6 +141,7 @@ const MainTabNavigator = () => (
       options={{
         tabBarLabel: '내 정보',
       }}
+      key="MyStatusNav" // 수정됨: 명시적으로 key 추가
     />
   </Tab.Navigator>
 );
@@ -144,18 +149,18 @@ const MainTabNavigator = () => (
 const AppNavigator = () => (
   <NavigationContainer>
     <RootStack.Navigator screenOptions={{ headerShown: false }}>
-      <RootStack.Screen name="Splash" component={SplashScreen}/>
-      <RootStack.Screen name="Start" component={StartScreen}/>
-      <RootStack.Screen name="MainTabs" component={MainTabNavigator}/>
+      <RootStack.Screen name="Splash" component={SplashScreen} />
+      <RootStack.Screen name="Start" component={StartScreen} />
+      <RootStack.Screen name="MainTabs" component={MainTabNavigator} />
       <RootStack.Screen
         name="StoryDetail"
         component={StoryDetail}
-        options={{ headerTitle: '동화 상세', presentation: 'card', }}
+        options={{ headerTitle: '동화 상세', presentation: 'card' }}
       />
       <RootStack.Screen
         name="PlayScreen"
         component={PlayScreen}
-        options={{ headerTitle: '재생 화면', presentation: 'card', gestureEnabled: true}}
+        options={{ headerTitle: '재생 화면', presentation: 'card', gestureEnabled: true }}
       />
     </RootStack.Navigator>
   </NavigationContainer>
