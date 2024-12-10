@@ -9,6 +9,7 @@ import {
 } from 'react-native';
 import { postRequest } from '../api/apiManager'; // API 관리 모듈
 import * as KakaoLogins from '@react-native-seoul/kakao-login'; // Kakao SDK 사용
+import { storeServerTokens } from '../api/serverTokenManager'; // 서버 토큰 저장 유틸리티
 
 const StartScreen = ({ navigation }: any) => {
   const [loading, setLoading] = useState(false);
@@ -31,35 +32,38 @@ const StartScreen = ({ navigation }: any) => {
       const kakaoResult = await KakaoLogins.login();
       console.log('Kakao Login Success:', kakaoResult);
 
-      const token = kakaoResult.accessToken;
-      console.log('Extracted token:', token);
+      const kakaoAccessToken = kakaoResult.accessToken;
+      console.log('Extracted Kakao token:', kakaoAccessToken);
 
       // 사용자 정보 가져오기
       const userProfile = await KakaoLogins.getProfile();
       console.log('Kakao User Profile:', JSON.stringify(userProfile, null, 2));
 
-      const email = userProfile.email;
+      const email = userProfile?.email;
       if (!email) {
         throw new Error('이메일 정보를 가져올 수 없습니다.');
       }
 
       // 서버로 로그인 요청
-      console.log('Sending to server:', { token, email });
-      const responseData = await postRequest(
-        '/api/auth/kakao/login',
-        { token, email },
-      );
+      console.log('Sending to server:', { token: kakaoAccessToken, email });
+      const responseData = await postRequest('/api/auth/kakao/login', {
+        token: kakaoAccessToken,
+        email,
+      });
 
       console.log('Login API Response:', responseData);
 
-      if (responseData.accessToken) {
+      if (responseData?.accessToken && responseData?.refreshToken) {
+        // 서버에서 받은 토큰 저장
+        await storeServerTokens(responseData.accessToken, responseData.refreshToken);
+
         Alert.alert('로그인 성공', `환영합니다, ${email}!`);
-        navigation.navigate('MainTabs', { user: responseData });
+        navigation.navigate('MainTabs'); // MainTabs로 이동
       } else {
-        Alert.alert('로그인 실패', responseData.message || '로그인에 실패했습니다.');
+        throw new Error(responseData?.message || '서버 응답이 올바르지 않습니다.');
       }
     } catch (error) {
-      // 'error' 타입을 명시적으로 처리
+      // 에러 처리
       if (error instanceof Error) {
         console.error('Error message:', error.message);
         Alert.alert('오류', error.message || '로그인 처리 중 문제가 발생했습니다.');
