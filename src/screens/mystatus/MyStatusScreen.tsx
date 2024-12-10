@@ -1,4 +1,4 @@
-import React from 'react';
+import React , { useState, useEffect }from 'react';
 import {
   View,
   Text,
@@ -10,13 +10,38 @@ import {
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import FollowList from './FollowList';
 import ChildrenStatus from './ChildrenStatus';
-
-// 프로필 이미지 경로 확인 및 유지
-const profileImage = require('../../assets/images/profileimage.png');
+import { getServerTokens } from '../../api/serverTokenManager';
+import { getRequest } from '../../api/apiManager';
 
 const Tab = createMaterialTopTabNavigator();
 
 const MyProfileScreen = () => {
+  const [profileImage, setProfileImage] = useState<string | null>(null);
+  const [nickName, setNickName] = useState<string | null>(null);
+
+  useEffect(() => {
+    const fetchProfileImage = async () => {
+      try {
+        const tokens = await getServerTokens(); // 저장된 토큰 가져오기
+        console.log('저장된 토큰 : ', tokens);
+        if (tokens?.accessToken) {
+          const response = await getRequest('api/members', {}, {
+            accessToken: tokens.accessToken,
+          });
+          setProfileImage(response.profileImage); // 프로필 이미지 설정
+          setNickName(response.nickname);
+        } else {
+          console.error('토큰이 없습니다. 다시 로그인 필요');
+          setProfileImage(null); // 기본 이미지 사용
+        }
+      } catch (error) {
+        console.error('프로필 이미지 가져오기 실패:', error);
+        setProfileImage(null); // 실패 시 기본 이미지 사용
+      }
+    };
+  
+    fetchProfileImage();
+  }, []);
   return (
     <SafeAreaView style={styles.container}>
       {/* 사용자 정보 섹션 */}
@@ -24,10 +49,14 @@ const MyProfileScreen = () => {
         {/* 프로필 이미지 */}
         <Image
           style={styles.profileImage}
-          source={profileImage} // profileimage.png 그대로 사용
+          source={
+            profileImage
+              ? { uri: profileImage }
+              : require('../../assets/images/profileimage.png') // 기본 이미지
+          }
         />
         <View style={styles.userInfo}>
-          <Text style={styles.username}>저쪽이</Text>
+          <Text style={styles.username}>{nickName}</Text>
           <TouchableOpacity style={styles.changeButton}>
             <Text style={styles.changeButtonText}>변경</Text>
           </TouchableOpacity>
