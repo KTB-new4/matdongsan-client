@@ -17,19 +17,22 @@ import Sound from 'react-native-sound';
 import { PanGestureHandler } from 'react-native-gesture-handler';
 
 export default function PlayScreen({ route, navigation }: any) {
-  const { story, ttsLink } = route.params;
-  const audioUrl = 'https://matdongsan.s3.ap-northeast-2.amazonaws.com/6729854078523a58e7403d18.mp3';
+  // 데이터 초기화
+  const storyData = route.params?.story || { title: '기본 제목', content: '' }; // 기본 데이터 설정
+  const ttsLinkData = route.params?.ttsLink || 'https://default-audio-link.mp3'; // 기본 TTS 링크 설정
+
   const soundRef = useRef<Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(81); // 기본값, 실제 로딩 후 설정됨
+  const [duration, setDuration] = useState(81); // 기본값
   const [showModal, setShowModal] = useState(false);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number | null>(null);
 
-  const sentences = story.content.split(/(\. |\n)/).filter((sentence: string) => sentence.trim());
+  const sentences = storyData.content.split(/(\. |\n)/).filter((sentence: string) => sentence.trim());
 
   useEffect(() => {
-    soundRef.current = new Sound(ttsLink, '', (error) => {
+    // TTS 링크를 기반으로 오디오 로드
+    soundRef.current = new Sound(ttsLinkData, '', (error) => {
       if (error) {
         console.log('오디오 파일 로드 오류:', error);
         return;
@@ -42,36 +45,31 @@ export default function PlayScreen({ route, navigation }: any) {
     return () => {
       soundRef.current?.release();
     };
-  }, []);
+  }, [ttsLinkData]);
 
   useEffect(() => {
     const interval = setInterval(() => {
       if (isPlaying && soundRef.current) {
         soundRef.current.getCurrentTime((seconds) => {
           setCurrentTime(seconds);
-  
-          // 각 문장의 예상 재생 시간을 설정하고 현재 재생 시간에 따라 맞는 문장 인덱스를 찾음
+
           let cumulativeDuration = 0;
-          
-          // 각 문장의 길이를 바탕으로 예상 재생 시간을 계산합니다.
           const sentenceDurations: number[] = sentences.map((sentence: string) => {
-            return (sentence.length / story.content.length) * duration;
+            return (sentence.length / storyData.content.length) * duration;
           });
-  
-          // 현재 재생 시간이 cumulativeDuration을 초과하지 않는 첫 번째 문장 인덱스를 찾음
+
           const sentenceIndex = sentenceDurations.findIndex((time: number) => {
             cumulativeDuration += time;
             return seconds < cumulativeDuration;
           });
-          
+
           setActiveSentenceIndex(sentenceIndex);
         });
       }
     }, 500);
-  
+
     return () => clearInterval(interval);
   }, [isPlaying, duration]);
-  
 
   const playPauseAudio = () => {
     if (soundRef.current) {
@@ -119,8 +117,8 @@ export default function PlayScreen({ route, navigation }: any) {
             style={styles.storyImage}
           />
         </TouchableOpacity>
-        <Text style={styles.title}>{story.title}</Text>
-        <Text style={styles.subtitle}>{story.id}</Text>
+        <Text style={styles.title}>{storyData.title}</Text>
+        <Text style={styles.subtitle}>{storyData.author || '기본 ID'}</Text>
 
         <View style={styles.playerContainer}>
           <Slider
@@ -136,20 +134,13 @@ export default function PlayScreen({ route, navigation }: any) {
             <Text style={styles.timeText}>{formatTime(currentTime)}</Text>
             <Text style={styles.timeText}>-{formatTime(duration - currentTime)}</Text>
           </View>
-          
+
           <View style={styles.controls}>
             <TouchableOpacity onPress={() => seekTo(Math.max(0, currentTime - 10))}>
               <Ionicons name="reload" size={24} color="#666" />
             </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.playButton}
-              onPress={playPauseAudio}
-            >
-              <Ionicons 
-                name={isPlaying ? "pause" : "play"} 
-                size={32} 
-                color="#fff" 
-              />
+            <TouchableOpacity style={styles.playButton} onPress={playPauseAudio}>
+              <Ionicons name={isPlaying ? 'pause' : 'play'} size={32} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => seekTo(Math.min(duration, currentTime + 10))}>
               <Ionicons name="forward" size={24} color="#666" />
@@ -158,10 +149,7 @@ export default function PlayScreen({ route, navigation }: any) {
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={styles.button}
-            onPress={() => setShowModal(true)}
-          >
+          <TouchableOpacity style={styles.button} onPress={() => setShowModal(true)}>
             <Ionicons name="book-outline" size={20} color="#666" />
             <Text style={styles.buttonText}>동화 읽기</Text>
           </TouchableOpacity>
@@ -176,9 +164,9 @@ export default function PlayScreen({ route, navigation }: any) {
                 source={require('../assets/images/cover2.png')}
                 style={styles.modalThumbnail}
               />
-              <Text style={styles.modalTitle}>{story.title}</Text>
+              <Text style={styles.modalTitle}>{storyData.title}</Text>
               <TouchableOpacity style={styles.modalControls} onPress={playPauseAudio}>
-                <Ionicons name={isPlaying ? "pause" : "play"} size={24} color="#4666FF" />
+                <Ionicons name={isPlaying ? 'pause' : 'play'} size={24} color="#4666FF" />
               </TouchableOpacity>
             </View>
 

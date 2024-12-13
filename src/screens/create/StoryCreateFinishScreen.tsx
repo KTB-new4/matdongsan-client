@@ -10,6 +10,7 @@ import {
   Modal,
   Image,
   BackHandler,
+  Alert,
 } from 'react-native';
 import Icon from 'react-native-vector-icons/Feather';
 import { TextInput } from 'react-native-gesture-handler';
@@ -18,7 +19,7 @@ import { Switch } from 'react-native-switch';
 import { getRequest, patchRequest } from '../../api/apiManager';
 
 const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
-  const { story, memberID } = route.params;
+  const { story } = route.params;
 
   useEffect(() => {
     const maxRetries = 10; // 최대 재시도 횟수
@@ -68,7 +69,7 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
   const [title, setTitle] = useState(story.title);
   const [tempTitle, setTempTitle] = useState(title);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [tags, setTags] = useState<string[]>(['#공룡이', '#교육']);
+  const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [ttsLink, setTtsLink] = useState<string | null>(null);
@@ -79,22 +80,79 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
     setIsEditing(true);
   };
 
-  const handleSavePress = () => {
-    if (tempTitle.trim() !== '') {
-      setTitle(tempTitle);
+  // 제목 수정 완료
+  const handleSavePress = async () => {
+    if (tempTitle.trim() !== title) {
+      try {
+        await patchRequest(`/api/stories/${story.id}`, {
+          title: tempTitle,
+          isPublic: isPublished,
+          tags,
+        },{});
+        setTitle(tempTitle);
+        Alert.alert('성공', '제목이 수정되었습니다.');
+        const updatedStory = await getRequest(`/api/stories/${story.id}`);
+        console.log('PATCH 후 서버 데이터: ', updatedStory);
+      } catch (error) {
+        console.error('Error updating title:', error);
+        Alert.alert('오류', '제목 수정에 실패했습니다.');
+      }
     }
     setIsEditing(false);
   };
 
-  const addTag = () => {
-    if (tagInput.trim()) {
-      setTags([...tags, `#${tagInput.trim()}`]);
+  // 태그 추가
+  const addTag = async () => {
+    if (tagInput.trim() && !tags.includes(`#${tagInput.trim()}`)) {
+      const newTags = [...tags, `#${tagInput.trim()}`];
+      setTags(newTags);
       setTagInput('');
+      try {
+        await patchRequest(`/api/stories/${story.id}`, {
+          title,
+          isPublic: isPublished,
+          tags: newTags,
+        });
+        Alert.alert('성공', '태그가 추가되었습니다.');
+      } catch (error) {
+        console.error('Error adding tag:', error);
+        Alert.alert('오류', '태그 추가에 실패했습니다.');
+      }
     }
   };
 
-  const removeTag = (tagToRemove: string) => {
-    setTags(tags.filter(tag => tag !== tagToRemove));
+  // 태그 삭제
+  const removeTag = async (tagToRemove: string) => {
+    const newTags = tags.filter((tag) => tag !== tagToRemove);
+    setTags(newTags);
+    try {
+      await patchRequest(`/api/stories/${story.id}`, {
+        title,
+        isPublic: isPublished,
+        tags: newTags,
+      });
+      Alert.alert('성공', '태그가 삭제되었습니다.');
+    } catch (error) {
+      console.error('Error removing tag:', error);
+      Alert.alert('오류', '태그 삭제에 실패했습니다.');
+    }
+  };
+
+  const handdlePublishToggle = async (isPublished : boolean) => {
+    setIsPublished(isPublished);
+    try{
+      //서버 업데이트 요청
+      await patchRequest(`api/stories/${story.id}`, {
+        title,
+        isPublic: isPublished,
+        tags,
+      });
+      Alert.alert('성공', `동화가 ${isPublished ? '게시' : '비공개'} 처리되었습니다.`);
+    }
+    catch(error){
+      console.error('Error updating isPublic : ', error);
+      Alert.alert('오류', '동화 게시 상태를 변경하는데 실패했습니다.');
+    }
   };
 
   const openModal = () => setIsModalVisible(true);
@@ -107,7 +165,7 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
 
     if (titleModified || tagsModified || isPublicModified) {
       try {
-        const response = await patchRequest(`/api/stories/1/${story.id}`, {
+        const response = await patchRequest(`/api/stories/${story.id}`, {
           title,
           isPublic: isPublished,
           tags,
@@ -198,7 +256,7 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
             <Text style={styles.toggleText}>동화 게시하기</Text>
             <Switch
               value={isPublished}
-              onValueChange={(val) => setIsPublished(val)}
+              onValueChange={handdlePublishToggle}
               circleSize={24}
               barHeight={30}
               circleBorderWidth={0}

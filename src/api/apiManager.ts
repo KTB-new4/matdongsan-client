@@ -16,7 +16,7 @@ const handleError = async (error: any, retryCallback: () => Promise<any>) => {
     // "액세스 토큰 만료" 메시지 처리
     if (
       error.response.status === 401 &&
-      error.response.data?.message === '액세스 토큰 만료'
+      error.response.data?.message === '액세스 토큰이 만료되었습니다.'
     ) {
       console.log('토큰 만료 감지, 갱신 시도');
       const newAccessToken = await refreshTokens();
