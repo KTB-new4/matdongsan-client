@@ -59,15 +59,20 @@ export const getRequest = async (endpoint: string, params = {}, headers = {}) =>
 };
 
 // POST 요청
-export const postRequest = async (endpoint: string, data: any, headers = {}) => {
+export const postRequest = async (endpoint: string, data = {}, headers = {}) => {
   const retryCallback = async () => postRequest(endpoint, data, headers); // 재시도 콜백
   try {
     const tokens = await getServerTokens();
+
+    const finalHeaders = tokens?.accessToken
+      ? { ...headers, accessToken: tokens.accessToken }
+      : { ...headers };
+
+    // 헤더 로그 추가
+    console.log('POST 요청 헤더:', finalHeaders);
+
     const response = await api.post(endpoint, data, {
-      headers: {
-        ...headers,
-        Authorization: tokens?.accessToken ? `Bearer ${tokens.accessToken}` : undefined,
-      },
+      headers: finalHeaders,
     });
     return response.data;
   } catch (error) {
@@ -76,16 +81,46 @@ export const postRequest = async (endpoint: string, data: any, headers = {}) => 
 };
 
 // PATCH 요청
-export const patchRequest = async (endpoint: string, data: any, headers = {}) => {
+export const patchRequest = async (endpoint: string, data = {}, headers = {}) => {
   const retryCallback = async () => patchRequest(endpoint, data, headers); // 재시도 콜백
   try {
     const tokens = await getServerTokens();
+
+    const finalHeaders = tokens?.accessToken
+      ? { ...headers, accessToken: tokens.accessToken }
+      : { ...headers };
+
+    // 헤더 로그 추가
+    console.log('POST 요청 헤더:', finalHeaders);
+
     const response = await api.patch(endpoint, data, {
-      headers: {
-        ...headers,
-        Authorization: tokens?.accessToken ? `Bearer ${tokens.accessToken}` : undefined,
-      },
+      headers: finalHeaders,
     });
+    return response.data;
+  } catch (error) {
+    return handleError(error, retryCallback);
+  }
+};
+
+// DELETE 요청
+export const deleteRequest = async (endpoint: string, data = {}, headers = {}) => {
+  const retryCallback = async () => deleteRequest(endpoint, data, headers); // 재시도 콜백
+  try {
+    const tokens = await getServerTokens();
+
+    const finalHeaders = tokens?.accessToken
+      ? { ...headers, accessToken: tokens.accessToken }
+      : { ...headers };
+
+    // 헤더 로그 추가
+    console.log('DELETE 요청 헤더:', finalHeaders);
+
+    // DELETE 요청
+    const response = await api.delete(endpoint, {
+      headers: finalHeaders,
+      data: data, // 데이터는 config의 data 속성에 전달
+    });
+
     return response.data;
   } catch (error) {
     return handleError(error, retryCallback);

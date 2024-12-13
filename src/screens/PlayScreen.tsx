@@ -113,10 +113,12 @@ export default function PlayScreen({ route, navigation }: any) {
       <StatusBar barStyle="dark-content" />
 
       <View style={styles.content}>
-        <Image
-          source={require('../assets/images/cover2.png')}
-          style={styles.storyImage}
-        />
+        <TouchableOpacity onPress={() => setShowModal(true)}>
+          <Image
+            source={require('../assets/images/cover2.png')}
+            style={styles.storyImage}
+          />
+        </TouchableOpacity>
         <Text style={styles.title}>{story.title}</Text>
         <Text style={styles.subtitle}>{story.id}</Text>
 
