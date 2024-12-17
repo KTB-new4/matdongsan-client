@@ -75,6 +75,8 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
   const [ttsLink, setTtsLink] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const StoryCover = story.coverUrl;
+
   const handleEditPress = () => {
     setTempTitle(title);
     setIsEditing(true);
@@ -159,20 +161,19 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
   const closeModal = () => setIsModalVisible(false);
 
   const patchAndPlayStory = async () => {
-    const titleModified = title !== story.title;
-    const tagsModified = tags.length > 0;
-    const isPublicModified = isPublished;
-
-    if (titleModified || tagsModified || isPublicModified) {
+    const updatedStory = {
+      ...story,
+      title,
+      tags,
+      isPublic: isPublished,
+    };
+  
+    if (title !== story.title || tags.length > 0 || isPublished !== story.isPublic) {
       try {
-        const response = await patchRequest(`/api/stories/${story.id}`, {
-          title,
-          isPublic: isPublished,
-          tags,
-        });
-        console.log("API Patch Response: ", response.data);
+        const response = await patchRequest(`/api/stories/${story.id}`, updatedStory);
+        console.log('API Patch Response: ', response.data);
       } catch (error) {
-        console.error("API 호출 오류: ", error);
+        console.error('API 호출 오류: ', error);
       }
     }
 
@@ -181,7 +182,7 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
         index: 1,
         routes: [
           { name: 'MainTabs', params: { screen: 'HomeNav', params: { screen: 'Home' } } },
-          { name: 'PlayScreen', params: { story, isFromCreation: true, ttsLink } },
+          { name: 'PlayScreen', params: { story: updatedStory, isFromCreation: true, ttsLink } },
         ],
       })
     );
@@ -191,7 +192,7 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollView}>
         <View style={styles.card}>
-          <Image source={require('../../assets/images/cover2.png')} style={styles.storyImage} resizeMode="cover" />
+          <Image source={StoryCover ? { uri : StoryCover} : undefined } style={styles.storyImage} resizeMode="contain" />
 
           {/* Title Section */}
           <View style={styles.titleContainer}>
@@ -307,7 +308,7 @@ const styles = StyleSheet.create({
   },
   storyImage: {
     width: '100%',
-    height: 200,
+    aspectRatio : 1 / 1,
     borderRadius: 12,
     marginBottom: 16,
   },

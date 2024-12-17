@@ -15,11 +15,12 @@ import Slider from '@react-native-community/slider';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Sound from 'react-native-sound';
 import { PanGestureHandler } from 'react-native-gesture-handler';
+import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
 
 export default function PlayScreen({ route, navigation }: any) {
   // 데이터 초기화
   const storyData = route.params?.story || { title: '기본 제목', content: '' }; // 기본 데이터 설정
-  const ttsLinkData = route.params?.ttsLink || 'https://default-audio-link.mp3'; // 기본 TTS 링크 설정
+  const ttsLinkData = route.params?.ttsLink || undefined; // 기본 TTS 링크 설정
 
   const soundRef = useRef<Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -29,6 +30,9 @@ export default function PlayScreen({ route, navigation }: any) {
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number | null>(null);
 
   const sentences = storyData.content.split(/(\. |\n)/).filter((sentence: string) => sentence.trim());
+
+  const StoryCoverUrl = storyData.coverUrl || undefined;
+  console.log(StoryCoverUrl)
 
   useEffect(() => {
     // TTS 링크를 기반으로 오디오 로드
@@ -113,7 +117,7 @@ export default function PlayScreen({ route, navigation }: any) {
       <View style={styles.content}>
         <TouchableOpacity onPress={() => setShowModal(true)}>
           <Image
-            source={require('../assets/images/cover2.png')}
+            source={StoryCoverUrl ? {uri: StoryCoverUrl} : undefined}
             style={styles.storyImage}
           />
         </TouchableOpacity>
@@ -137,13 +141,13 @@ export default function PlayScreen({ route, navigation }: any) {
 
           <View style={styles.controls}>
             <TouchableOpacity onPress={() => seekTo(Math.max(0, currentTime - 10))}>
-              <Ionicons name="reload" size={24} color="#666" />
+              <Ionicons name="play-back-outline" size={24} color="#666" />
             </TouchableOpacity>
             <TouchableOpacity style={styles.playButton} onPress={playPauseAudio}>
               <Ionicons name={isPlaying ? 'pause' : 'play'} size={32} color="#fff" />
             </TouchableOpacity>
             <TouchableOpacity onPress={() => seekTo(Math.min(duration, currentTime + 10))}>
-              <Ionicons name="forward" size={24} color="#666" />
+              <Ionicons name="play-forward-outline" size={24} color="#666" />
             </TouchableOpacity>
           </View>
         </View>
