@@ -34,6 +34,7 @@ const StorySummary: React.FC<StorySummaryProps> = ({ tag, title, author, likes, 
 const styles = StyleSheet.create({
   container: {
     marginBottom: 20,
+    marginRight : 5,
     alignItems: 'center',
   },
   coverContainer: {

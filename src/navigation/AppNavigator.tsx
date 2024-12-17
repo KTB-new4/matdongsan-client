@@ -35,7 +35,7 @@ export type RootStackParamList = {
   StoryDetail: { storyId: string };
   MyLibrary: undefined;
   MyInfo: undefined;
-  PlayScreen: { story: { id: string; title: string; content: string }, isFromCreation: boolean };
+  PlayScreen: { story: { id: string; title: string; content: string; author?: string; coverUrl?: string;}, isFromCreation: boolean, ttsLink: string | null };
   FollowStoryList: { nickname: string; followers: number };
 };
 

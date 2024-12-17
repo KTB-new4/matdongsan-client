@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   SafeAreaView,
   ScrollView,
@@ -8,27 +8,56 @@ import {
   StyleSheet,
   Dimensions,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import Carousel from 'react-native-reanimated-carousel';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../navigation/AppNavigator';
+import { getRequest } from '../../api/apiManager'; // API 요청 함수 추가
 
 const { width: screenWidth } = Dimensions.get('window');
 
-// SPACING을 styles 정의 전에 선언
-const SPACING = 15; // 카드 간 간격
-
-// 데이터 배열
-const stories = [
-  { id: '1', source: require('../../assets/images/cover1.png'), tag: '#모험', title: '동화 1' },
-  { id: '2', source: require('../../assets/images/cover2.png'), tag: '#우정', title: '동화 2' },
-  { id: '3', source: require('../../assets/images/cover3.png'), tag: '#가족', title: '동화 3' },
-  { id: '4', source: require('../../assets/images/cover4.png'), tag: '#여행', title: '동화 4' },
-];
+// SPACING 상수 정의
+const SPACING = 15;
 
 const RecommendScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const CARD_WIDTH = screenWidth * 0.4; // 카드 너비
+  const CARD_WIDTH = screenWidth * 0.4;
+
+  // 상태 정의
+  const [popularStories, setPopularStories] = useState<any[]>([]);
+  const [latestStories, setLatestStories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // 서버 데이터 호출
+  useEffect(() => {
+    const fetchStories = async () => {
+      try {
+        const popularResponse = await getRequest('api/library', {
+          sort: 'popular',
+          language: 'all',
+          age: 'main',
+          pageable: { page: 0, size: 10, sort: ['popular'] },
+        },);
+
+        const latestResponse = await getRequest('api/library', {
+          sort: 'recent',
+          language: 'all',
+          age: 'main',
+          pageable: { page: 0, size: 10, sort: ['recent'] },
+        });
+
+        setPopularStories((popularResponse.content || []).slice(0,10));
+        setLatestStories((latestResponse.content || []).slice(0,10));
+      } catch (error) {
+        console.error('Error fetching stories:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchStories();
+  }, []);
 
   const navigateToStoryDetail = (storyId: string) => {
     navigation.navigate('StoryDetail', { storyId });
@@ -37,12 +66,12 @@ const RecommendScreen: React.FC = () => {
   const renderCarouselItem = ({ item }: { item: any }) => (
     <TouchableOpacity
       style={[styles.card, { marginRight: SPACING }]}
-      onPress={() => navigateToStoryDetail(item.id)} // 클릭 시 StoryDetail로 이동
+      onPress={() => navigateToStoryDetail(item.id)}
     >
-      <Image source={item.source} style={styles.image} />
+      <Image source={{ uri: item.coverUrl }} style={styles.image} />
       <View style={styles.textContainer}>
         <Text style={styles.titleText}>{item.title}</Text>
-        <Text style={styles.tagText}>{item.tag}</Text>
+        <Text style={styles.tagText}>{item.tag || '#기본태그'}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -50,6 +79,14 @@ const RecommendScreen: React.FC = () => {
   const navigateToAllStories = () => {
     navigation.navigate('AllStoryScreen');
   };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -59,7 +96,7 @@ const RecommendScreen: React.FC = () => {
         <Carousel
           width={CARD_WIDTH + SPACING}
           height={220}
-          data={stories}
+          data={popularStories}
           renderItem={renderCarouselItem}
           loop={false}
           snapEnabled
@@ -72,7 +109,7 @@ const RecommendScreen: React.FC = () => {
         <Carousel
           width={CARD_WIDTH + SPACING}
           height={220}
-          data={stories}
+          data={latestStories}
           renderItem={renderCarouselItem}
           loop={false}
           snapEnabled
@@ -94,9 +131,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8F9FF',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8F9FF',
+  },
   scrollViewContent: {
-    paddingTop: 30, // 전체 상단 여백
-    paddingBottom: 20, // 하단 여백
+    paddingTop: 30,
+    paddingBottom: 20,
   },
   sectionTitle: {
     fontSize: 20,
@@ -107,7 +150,7 @@ const styles = StyleSheet.create({
   },
   card: {
     width: screenWidth * 0.4,
-    marginLeft: 20,
+    marginLeft: SPACING,
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
     elevation: 3,
