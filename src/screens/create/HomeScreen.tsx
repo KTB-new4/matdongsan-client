@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, TextInput, SafeAreaView, Image, Alert } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
-import { postRequest } from '../../api/apiManager';
+import { getRequest, postRequest } from '../../api/apiManager';
 import Icon from 'react-native-vector-icons/Ionicons';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
+import { useFocusEffect } from '@react-navigation/native';
 
 const HomeScreen = ({ navigation }: any) => {
   const [isKorean, setIsKorean] = useState(true);
   const [writePrompt, setWritePrompt] = useState('');
-  const [selectedChild, setSelectedChild] = useState('');
+  const [children, setChildren] = useState<any[]>([]);
+  const [selectedChildId, setSelectedChildId] = useState('');
   const [loading, setLoading] = useState(false);
   const togglePosition = useSharedValue(0);
 
@@ -19,6 +21,28 @@ const HomeScreen = ({ navigation }: any) => {
     { title: '아빠와 재미있게 읽을 수 있는 책을 고르고 싶어요.', description: '아빠와 같이 읽으면 재밌는 동화를 만들어드려요'},
     { title: '공격적인 행동을 되돌아보도록 계기를 만들어주고 싶어요.', description: '공룡에 관한 내용위주로 동화를 만들어드려요'},
   ];
+
+  // 자녀 목록 가져오기
+  const fetchChildren = async () => {
+    try {
+      const response = await getRequest('/api/members/children');
+      setChildren(response);
+
+      //데이터가 비어있으면 선택된 자녀 초기화
+      if(response.length === 0){
+        setSelectedChildId('');
+      }
+    } catch (error) {
+      console.error('자녀 목록 가져오기 실패:', error);
+    }
+  };
+
+  // 화면이 포커스될 때마다 자녀 목록 갱신
+  useFocusEffect(
+    useCallback(() => {
+      fetchChildren();
+    }, [])
+  );
 
   const toggleLanguage = () => {
     setIsKorean(!isKorean);
@@ -32,10 +56,20 @@ const HomeScreen = ({ navigation }: any) => {
   });
 
   const handleGenerate = async () => {
-    if (!writePrompt.trim() || !selectedChild) {
+    if (!writePrompt.trim() || !selectedChildId) {
       Alert.alert('오류', '모든 필드를 채워주세요.');
       return;
     }
+
+    // 선택된 자녀의 정보 가져오기
+    const selectedChild = children.find((child: any) => child.id === selectedChildId);
+
+    if (!selectedChild) {
+      Alert.alert('오류', '선택된 자녀 정보를 찾을 수 없습니다.');
+      return;
+    }
+
+    const age = isKorean ? selectedChild.koreanAge : selectedChild.englishAge;
 
     setLoading(true);
     navigation.navigate('Loading', { response: null });
@@ -43,11 +77,11 @@ const HomeScreen = ({ navigation }: any) => {
     try {
       const data = {
         language: isKorean ? 'ko' : 'en',
-        age: parseInt(selectedChild),
+        age: age,
         given: writePrompt,
       };
 
-      const response = await postRequest('api/stories/1', data);
+      const response = await postRequest('api/stories', data);
       console.log('API 응답 : ', response);
       navigation.replace('Loading', { response });
     } catch (error) {
@@ -63,14 +97,14 @@ const HomeScreen = ({ navigation }: any) => {
       <View style={styles.header}>
         <View style={styles.languageContainer}>
           <RNPickerSelect
-            onValueChange={(value) => setSelectedChild(value)}
-            items={[
-              { label: '진아', value: '3' },
-              { label: '진혁', value: '8' },
-              { label: '은혁', value: '5' },
-            ]}
+            onValueChange={(value) => setSelectedChildId(value)}
+            items={children.map((child: any) => ({
+              label: child.name,
+              value: child.id,
+            }))}
             style={pickerSelectStyles}
             placeholder={{ label: '자녀 선택', value: '' }}
+            value={selectedChildId}
           />
           <View style={styles.toggleContainer}>
             <TouchableOpacity onPress={toggleLanguage} style={styles.toggleButton}>

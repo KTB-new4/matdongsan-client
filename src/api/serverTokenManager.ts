@@ -1,6 +1,7 @@
 import axios from 'axios';
 import EncryptedStorage from 'react-native-encrypted-storage';
 import { Alert } from 'react-native';
+import { getRequest } from './apiManager';
 
 const TOKEN_KEY = 'SERVER_TOKENS';
 
@@ -58,9 +59,9 @@ export const refreshTokens = async () => {
   }
 
   try {
-    const { data } = await axios.get('http://3.35.49.154/api/auth/reissue', {
+    const { data } = await getRequest('/api/auth/reissue', {
       headers: {
-        Authorization: `Bearer ${tokens.refreshToken}`,
+        refreshToken: tokens.refreshToken,
       },
     });
 
