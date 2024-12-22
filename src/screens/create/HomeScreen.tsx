@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, TextInput, SafeAreaView, Image, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, TextInput, SafeAreaView, Image, Alert, Modal } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
 import { getRequest, postRequest } from '../../api/apiManager';
 import Icon from 'react-native-vector-icons/Ionicons';
@@ -14,6 +14,7 @@ const HomeScreen = ({ navigation }: any) => {
   const [selectedChildId, setSelectedChildId] = useState('');
   const [loading, setLoading] = useState(false);
   const togglePosition = useSharedValue(0);
+  const [isHelpVisible, setIsHelpVisible] = useState(false); // Help 모달 상태
 
   const storyPrompts = [
     { title: '공룡 박사인 아이에게 보여 주고 싶어요.', description: '공룡에 관한 내용 위주로 동화를 만들어드려요'},
@@ -169,9 +170,35 @@ const HomeScreen = ({ navigation }: any) => {
       </View>
 
       {/* Help Button */}
-      <TouchableOpacity style={styles.helpButton}>
+      <TouchableOpacity
+        style={styles.helpButton}
+        onPress={() => setIsHelpVisible(!isHelpVisible)} // 토글
+      >
         <Text style={styles.helpButtonText}>?</Text>
       </TouchableOpacity>
+
+      {/* Help Modal */}
+      <Modal
+        visible={isHelpVisible}
+        animationType="fade"
+        transparent={true}
+        onRequestClose={() => setIsHelpVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>도움말</Text>
+            <Text style={styles.modalText}>
+              1. 자녀를 선택하세요.{"\n"}2. 주제를 입력하고 동화를 생성하세요.{"\n"}3. 주제는 간단히 적어도 괜찮습니다!
+            </Text>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={() => setIsHelpVisible(false)}
+            >
+              <Text style={styles.closeButtonText}>닫기</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -354,6 +381,41 @@ const styles = StyleSheet.create({
   helpButtonText: {
     color: '#FFFFFF',
     fontSize: 24,
+    fontWeight: 'bold',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#FFF',
+    borderRadius: 10,
+    padding: 20,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  modalText: {
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 20,
+    textAlign: 'center',
+  },
+  closeButton: {
+    backgroundColor: '#6B4EFF',
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: 8,
+  },
+  closeButtonText: {
+    color: '#FFF',
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });

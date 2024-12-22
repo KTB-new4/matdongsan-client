@@ -1,42 +1,84 @@
-import React from 'react';
-import { Dimensions, FlatList, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { Dimensions, FlatList, StyleSheet, ActivityIndicator, View, Text } from 'react-native';
 import FollowSummary from '../../components/FollowSummary';
 import { NavigationProp, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../navigation/AppNavigator';
+import { getRequest } from '../../api/apiManager';
 
 const screenWidth = Dimensions.get('window').width;
 const numColumns = 3;
 const spacing = 10;
-const itemWidth = (screenWidth - spacing * (numColumns + 1 )) / numColumns;
+const itemWidth = (screenWidth - spacing * (numColumns + 1)) / numColumns;
 
-const dummyData = [
-  { id: '1', nickname: '닉네임1', followers: 1100 },
-  { id: '2', nickname: '닉네임2', followers: 950 },
-  { id: '3', nickname: '닉네임3', followers: 1200 },
-  { id: '4', nickname: '닉네임4', followers: 700 },
-  { id: '5', nickname: '닉네임5', followers: 1340 },
-  { id: '6', nickname: '닉네임6', followers: 2100 },
-];
+interface FollowData {
+  id: number; // 작가 ID
+  nickname: string;
+  followers: number;
+  profileImage: string;
+}
 
-const FollowList = () => {
-    const navigation = useNavigation<NavigationProp<RootStackParamList>>();
-  const renderItem = ({ item }: { item: typeof dummyData[0] }) => (
+const FollowList: React.FC = () => {
+  const navigation = useNavigation<NavigationProp<RootStackParamList>>();
+  const [followList, setFollowList] = useState<FollowData[]>([]);
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // 팔로우 리스트 가져오기
+  const fetchFollowList = async () => {
+    try {
+      setLoading(true);
+      const response: FollowData[] = await getRequest('/api/members/follow');
+      setFollowList(response);
+    } catch (err) {
+      console.error('Error fetching follow list:', err);
+      setError('팔로우 리스트를 불러오는 데 실패했습니다.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchFollowList();
+  }, []);
+
+  const renderItem = ({ item }: { item: FollowData }) => (
     <FollowSummary
-    nickname={item.nickname}
-    followers={item.followers}
-    containerStyle={{width: itemWidth, marginHorizontal: spacing/2}}
-    onPress={() => navigation.navigate('FollowStoryList', {
-        nickname: item.nickname,
-        followers: item.followers,
-    })}
+      nickname={item.nickname}
+      followers={item.followers}
+      profileImage={item.profileImage}
+      containerStyle={{ width: itemWidth, marginHorizontal: spacing / 2 }}
+      onPress={() =>
+        navigation.navigate('FollowStoryList', {
+          nickname: item.nickname,
+          followers: item.followers,
+          authorId: item.id, // 작가 ID 전달
+          profileImage: item.profileImage
+        })
+      }
     />
   );
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#4A90E2" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>{error}</Text>
+      </View>
+    );
+  }
+
   return (
     <FlatList
-      data={dummyData}
+      data={followList}
       renderItem={renderItem}
-      keyExtractor={(item) => item.id}
+      keyExtractor={(item) => item.id.toString()}
       numColumns={numColumns}
       contentContainerStyle={styles.listContainer}
     />
@@ -46,7 +88,21 @@ const FollowList = () => {
 const styles = StyleSheet.create({
   listContainer: {
     paddingVertical: 10,
-    paddingHorizontal: spacing/2,
+    paddingHorizontal: spacing / 2,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  errorText: {
+    fontSize: 16,
+    color: 'red',
   },
 });
 

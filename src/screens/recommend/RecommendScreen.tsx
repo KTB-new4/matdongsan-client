@@ -13,42 +13,45 @@ import {
 import Carousel from 'react-native-reanimated-carousel';
 import { useNavigation, NavigationProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../navigation/AppNavigator';
-import { getRequest } from '../../api/apiManager'; // API 요청 함수 추가
+import { getRequest } from '../../api/apiManager';
 
 const { width: screenWidth } = Dimensions.get('window');
-
-// SPACING 상수 정의
 const SPACING = 15;
 
 const RecommendScreen: React.FC = () => {
   const navigation = useNavigation<NavigationProp<RootStackParamList>>();
   const CARD_WIDTH = screenWidth * 0.4;
 
-  // 상태 정의
   const [popularStories, setPopularStories] = useState<any[]>([]);
   const [latestStories, setLatestStories] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // 서버 데이터 호출
   useEffect(() => {
     const fetchStories = async () => {
       try {
-        const popularResponse = await getRequest('api/library', {
+        const popularParams = {
           sort: 'popular',
           language: 'all',
           age: 'main',
           pageable: { page: 0, size: 10, sort: ['popular'] },
-        },);
-
-        const latestResponse = await getRequest('api/library', {
+        };
+        const latestParams = {
           sort: 'recent',
           language: 'all',
           age: 'main',
           pageable: { page: 0, size: 10, sort: ['recent'] },
-        });
+        };
 
-        setPopularStories((popularResponse.content || []).slice(0,10));
-        setLatestStories((latestResponse.content || []).slice(0,10));
+        console.log('Fetching popular stories with params:', popularParams);
+        const popularResponse = await getRequest('api/library', popularParams);
+        console.log('Popular stories response:', popularResponse);
+
+        console.log('Fetching latest stories with params:', latestParams);
+        const latestResponse = await getRequest('api/library', latestParams);
+        console.log('Latest stories response:', latestResponse);
+
+        setPopularStories((popularResponse.content || []).slice(0, 10));
+        setLatestStories((latestResponse.content || []).slice(0, 10));
       } catch (error) {
         console.error('Error fetching stories:', error);
       } finally {
@@ -71,7 +74,7 @@ const RecommendScreen: React.FC = () => {
       <Image source={{ uri: item.coverUrl }} style={styles.image} />
       <View style={styles.textContainer}>
         <Text style={styles.titleText}>{item.title}</Text>
-        <Text style={styles.tagText}>{item.tag || '#기본태그'}</Text>
+        <Text style={styles.tagText}>{item.tag || ''}</Text>
       </View>
     </TouchableOpacity>
   );
