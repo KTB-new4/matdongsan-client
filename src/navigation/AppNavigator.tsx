@@ -20,6 +20,7 @@ import FollowStoryList from '../screens/mystatus/FollowStoryList';
 import SplashScreen from '../screens/SplashScreen';
 import StartScreen from '../screens/StartScreen';
 import { getRequest } from '../api/apiManager';
+import MyPageScreen from '../screens/mystatus/MyPageScreen';
 
 const Tab = createBottomTabNavigator();
 const HomeStack = createStackNavigator();
@@ -32,11 +33,11 @@ export type RootStackParamList = {
   Home: undefined;
   RecommendScreen: undefined;
   AllStoryScreen: undefined;
-  StoryDetail: { storyId: string };
+  StoryDetail: { storyId: string; likedStoryId?: string | null; };
   MyLibrary: undefined;
-  MyInfo: undefined;
+  MyStatusScreen: undefined;
   PlayScreen: { story: { id: string; title: string; content: string; author?: string; coverUrl?: string;}, isFromCreation: boolean, ttsLink: string | null };
-  FollowStoryList: { nickname: string; followers: number };
+  FollowStoryList: { nickname: string; followers: number; authorId: number; profileImage: string;};
 };
 
 // HomeStack Navigator
@@ -66,6 +67,7 @@ const MyLibraryStackScreen = () => (
 // MyStatusStack Navigator
 const MyStatusStackScreen = () => (
   <MyStatusStack.Navigator>
+    <MyStatusStack.Screen name="MyPageScreen" component={MyPageScreen} options={{ headerTitle: '마이 페이지'}} />
     <MyStatusStack.Screen name="MyStatusScreen" component={MyStatusScreen} options={{ headerTitle: '마이 페이지' }} />
     <MyStatusStack.Screen name="FollowStoryList" component={FollowStoryList} options={{ headerShown: false }} />
   </MyStatusStack.Navigator>

@@ -153,9 +153,16 @@ export default function PlayScreen({ route, navigation }: any) {
         </View>
 
         <View style={styles.actionButtons}>
-          <TouchableOpacity style={styles.button} onPress={() => setShowModal(true)}>
-            <Ionicons name="book-outline" size={20} color="#666" />
-            <Text style={styles.buttonText}>동화 읽기</Text>
+          {/* Q&A 생성 버튼 */}
+          <TouchableOpacity style={styles.button} onPress={() => console.log('Q&A 생성')}>
+            <Ionicons name="chatbubble-ellipses-outline" size={20} color="#666" />
+            <Text style={styles.buttonText}>Q&A 생성</Text>
+          </TouchableOpacity>
+
+          {/* 인형 재생 버튼 */}
+          <TouchableOpacity style={styles.button} onPress={() => console.log('인형 재생')}>
+            <Ionicons name="play-circle-outline" size={20} color="#666" />
+            <Text style={styles.buttonText}>인형 재생</Text>
           </TouchableOpacity>
         </View>
       </View>
