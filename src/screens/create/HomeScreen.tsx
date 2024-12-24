@@ -119,10 +119,6 @@ const HomeScreen = ({ navigation }: any) => {
 
       {/* Title Section */}
       <View style={styles.titleContainer}>
-        <Image
-          source={require('../../assets/images/profileimage.png')}
-          style={styles.characterIcon}
-        />
         <Text style={styles.title}>어떤 동화를{'\n'}만들어볼까요?</Text>
       </View>
 

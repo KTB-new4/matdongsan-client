@@ -13,30 +13,31 @@ const AllStoryScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>(''); 
   const [sortOption, setSortOption] = useState<string>('recent'); 
 
-  const handleSortChange = (option: string) => {
-    setSortOption(option);
-    console.log('Sort Option Changed:', option);
+  const handleSortChange = () => {
+    setSortOption(sortOption === 'recent' ? 'popular' : 'recent');
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
-        <View style={styles.searchContainer}>
-          <Icon name="magnify" size={24} color="#888" style={styles.searchIcon} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="동화를 검색하세요"
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-          />
-        </View>
-
-        <View style={styles.sortContainer}>
-          <TouchableOpacity onPress={() => handleSortChange('recent')}>
-            <Text style={[styles.sortOption, sortOption === 'recent' && styles.activeSort]}>최신순</Text>
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => handleSortChange('popular')}>
-            <Text style={[styles.sortOption, sortOption === 'popular' && styles.activeSort]}>인기순</Text>
+        <View style={styles.searchRow}>
+          <View style={styles.searchContainer}>
+            <Icon name="magnify" size={24} color="#888" style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="동화를 검색하세요"
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
+          <TouchableOpacity 
+            style={styles.sortButton}
+            onPress={handleSortChange}
+          >
+            <Text style={styles.sortButtonText}>
+              {sortOption === 'recent' ? '최신순' : '인기순'}
+            </Text>
+            <Icon name="chevron-down" size={20} color="#6366F1" />
           </TouchableOpacity>
         </View>
       </View>
@@ -78,7 +79,13 @@ const styles = StyleSheet.create({
     elevation: 2,
     zIndex: 1,
   },
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   searchContainer: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#f1f5f9',
@@ -94,19 +101,21 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#333',
   },
-  sortContainer: {
+  sortButton: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: 10,
+    alignItems: 'center',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 8,
+    backgroundColor: '#f1f5f9',
+    gap: 4,
   },
-  sortOption: {
+  sortButtonText: {
     fontSize: 14,
-    color: '#666',
-  },
-  activeSort: {
     color: '#6366F1',
-    fontWeight: 'bold',
+    fontWeight: '600',
   },
 });
 
 export default AllStoryScreen;
+

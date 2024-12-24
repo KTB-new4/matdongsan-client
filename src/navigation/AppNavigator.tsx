@@ -36,7 +36,17 @@ export type RootStackParamList = {
   StoryDetail: { storyId: string; likedStoryId?: string | null; };
   MyLibrary: undefined;
   MyStatusScreen: undefined;
-  PlayScreen: { story: { id: string; title: string; content: string; author?: string; coverUrl?: string;}, isFromCreation: boolean, ttsLink: string | null };
+  PlayScreen: { story: { 
+    id: string;
+    title: string;
+    content: string;
+    author?: string;
+    coverUrl?: string;
+  },
+  isFromCreation: boolean,
+  ttsLink: string | null,
+  timestamps: number[],
+};
   FollowStoryList: { nickname: string; followers: number; authorId: number; profileImage: string;};
 };
 
@@ -60,16 +70,16 @@ const RecommendStackNavigator = () => (
 // MyLibraryStack Navigator
 const MyLibraryStackScreen = () => (
   <MyLibraryStack.Navigator>
-    <MyLibraryStack.Screen name="MyLibraryScreen" component={MyLibraryScreen} options={{ headerTitle: '내 도서관' }} />
+    <MyLibraryStack.Screen name="MyLibraryScreen" component={MyLibraryScreen} options={{ headerTitle: '내 도서관', headerLeft: () => null}} />
   </MyLibraryStack.Navigator>
 );
 
 // MyStatusStack Navigator
 const MyStatusStackScreen = () => (
   <MyStatusStack.Navigator>
-    <MyStatusStack.Screen name="MyPageScreen" component={MyPageScreen} options={{ headerTitle: '마이 페이지'}} />
-    <MyStatusStack.Screen name="MyStatusScreen" component={MyStatusScreen} options={{ headerTitle: '마이 페이지' }} />
-    <MyStatusStack.Screen name="FollowStoryList" component={FollowStoryList} options={{ headerShown: false }} />
+    <MyStatusStack.Screen name="MyPageScreen" component={MyPageScreen} options={{ headerShown: false}} />
+    <MyStatusStack.Screen name="MyStatusScreen" component={MyStatusScreen} options={{ headerTitle: '내 정보', headerBackTitle: 'Back' }} />
+    <MyStatusStack.Screen name="FollowStoryList" component={FollowStoryList} options={{headerTitle: () => null, headerBackTitle: 'Back' }} />
   </MyStatusStack.Navigator>
 );
 

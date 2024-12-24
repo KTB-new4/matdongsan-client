@@ -10,6 +10,7 @@ import {
 import { createMaterialTopTabNavigator } from '@react-navigation/material-top-tabs';
 import FollowList from './FollowList';
 import ChildrenStatus from './ChildrenStatus';
+import QnADashboard from './QnADashboard';
 import { getServerTokens } from '../../api/serverTokenManager';
 import { getRequest } from '../../api/apiManager';
 
@@ -57,9 +58,6 @@ const MyProfileScreen = () => {
         />
         <View style={styles.userInfo}>
           <Text style={styles.username}>{nickName}</Text>
-          <TouchableOpacity style={styles.changeButton}>
-            <Text style={styles.changeButtonText}>변경</Text>
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -78,6 +76,12 @@ const MyProfileScreen = () => {
             name="Follow"
             component={FollowList}
             options={{ tabBarLabel: '팔로우' }}
+          />
+          {/* Q&A Dashboard 화면 */}
+          <Tab.Screen
+            name="QnADashboard"
+            component={QnADashboard}
+            options={{tabBarLabel: 'Q&A Log'}}
           />
           {/* ChildrenStatus 화면 */}
           <Tab.Screen
@@ -114,17 +118,6 @@ const styles = StyleSheet.create({
   username: {
     fontSize: 20,
     fontWeight: 'bold',
-  },
-  changeButton: {
-    marginTop: 5,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    backgroundColor: '#ddd',
-    borderRadius: 5,
-  },
-  changeButtonText: {
-    fontSize: 14,
-    color: '#333',
   },
   tabContainer: {
     flex: 1,
