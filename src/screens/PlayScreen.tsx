@@ -10,17 +10,20 @@ import {
   Dimensions,
   StatusBar,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import Slider from '@react-native-community/slider';
 import Ionicons from 'react-native-vector-icons/Ionicons';
 import Sound from 'react-native-sound';
 import { PanGestureHandler } from 'react-native-gesture-handler';
-import { FontAwesomeIcon } from '@fortawesome/react-native-fontawesome';
+import RNPickerSelect from 'react-native-picker-select';
+import { getRequest, postRequest } from '../api/apiManager';
 
 export default function PlayScreen({ route, navigation }: any) {
   // 데이터 초기화
   const storyData = route.params?.story || { title: '기본 제목', content: '' }; // 기본 데이터 설정
   const ttsLinkData = route.params?.ttsLink || undefined; // 기본 TTS 링크 설정
+  const timestamps: number[] = route.params?.timestamps || []; // 타임스탬프 데이터
 
   const soundRef = useRef<Sound | null>(null);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -29,7 +32,24 @@ export default function PlayScreen({ route, navigation }: any) {
   const [showModal, setShowModal] = useState(false);
   const [activeSentenceIndex, setActiveSentenceIndex] = useState<number | null>(null);
 
-  const sentences = storyData.content.split(/(\. |\n)/).filter((sentence: string) => sentence.trim());
+  // 인형 재생 상태 관리
+  const [isDollPlaying, setIsDollPlaying] = useState(false);
+  const [isLoadingDoll, setIsLoadingDoll] = useState(false);
+  const [isDollPlayModalVisible, setIsDollPlayModalVisible] = useState(false);
+  const [isDollPlayCloseEnabled, setIsDollPlayCloseEnabled] = useState(false);
+
+  // Q&A 상태 관리
+  const [showQAModal, setShowQAModal] = useState(false);
+  const [showChildrenList, setShowChildrenList] = useState(false);
+  const [children, setChildren] = useState([]); // 자녀 목록
+  const [selectedChild, setSelectedChild] = useState<string | null>(null);
+  const [qaData, setQaData] = useState<any[]>([]); // Q&A 데이터
+  const [qaLoading, setQaLoading] = useState(false);
+
+  const sentences = storyData.content
+  .replace(/(?<=[”"])\s(?=\w)/g, '\n') // 큰따옴표 뒤의 공백을 줄바꿈으로 변환
+  .split(/(?<=[.!?])\s+/) // . ! ? 뒤의 공백을 기준으로 분리
+  .filter((sentence: string) => sentence.trim()); // 빈 문장은 제거
 
   const StoryCoverUrl = storyData.coverUrl || undefined;
   console.log(StoryCoverUrl)
@@ -56,24 +76,33 @@ export default function PlayScreen({ route, navigation }: any) {
       if (isPlaying && soundRef.current) {
         soundRef.current.getCurrentTime((seconds) => {
           setCurrentTime(seconds);
-
-          let cumulativeDuration = 0;
-          const sentenceDurations: number[] = sentences.map((sentence: string) => {
-            return (sentence.length / storyData.content.length) * duration;
-          });
-
-          const sentenceIndex = sentenceDurations.findIndex((time: number) => {
-            cumulativeDuration += time;
-            return seconds < cumulativeDuration;
-          });
-
-          setActiveSentenceIndex(sentenceIndex);
+  
+          // 현재 시간에 해당하는 문장 인덱스 계산
+          const sentenceIndex = timestamps.findIndex(
+            (timestamp, index) =>
+              seconds >= timestamp && seconds < (timestamps[index + 1] || duration) // 다음 타임스탬프 이전까지
+          );
+  
+          setActiveSentenceIndex(sentenceIndex); // 하이라이트 문장 업데이트
         });
       }
-    }, 500);
-
+    }, 100); // 100ms마다 업데이트 (더 부드럽게)
+  
     return () => clearInterval(interval);
-  }, [isPlaying, duration]);
+  }, [isPlaying, timestamps, duration]);
+
+  // 자녀 목록 불러오기
+  useEffect(() => {
+    const fetchChildren = async () => {
+      try {
+        const response = await getRequest('/api/members/children');
+        setChildren(response || []);
+      } catch (error) {
+        console.error('자녀 정보를 가져오는 중 오류 발생:', error);
+      }
+    };
+    fetchChildren();
+  }, []);
 
   const playPauseAudio = () => {
     if (soundRef.current) {
@@ -100,14 +129,63 @@ export default function PlayScreen({ route, navigation }: any) {
   };
 
   const handleSentencePress = (index: number) => {
-    const timePerSentence = duration / sentences.length;
-    const targetTime = index * timePerSentence;
-    seekTo(targetTime);
-    setIsPlaying(true);
+    if (timestamps[index] !== undefined) {
+      const targetTime = timestamps[index];
+      seekTo(targetTime); // 해당 타임스탬프 위치로 이동
+      setActiveSentenceIndex(index); // 선택한 문장을 활성화
+      setIsPlaying(true); // 재생 시작
+    }
   };
 
   const handleGestureClose = () => {
     setShowModal(false);
+  };
+
+  const handleDollPlay = async () => {
+    setIsLoadingDoll(true);
+    try {
+      await getRequest(`/api/modules/stories/${storyData.id}`);
+      setIsDollPlaying(true);
+      setIsDollPlayModalVisible(true);
+
+      setTimeout(() => {
+        setIsDollPlaying(false);
+        setIsDollPlayCloseEnabled(true);
+      }, duration * 1000); // 동화 재생 시간이 지나면 닫기 버튼 활성화
+    } catch (error) {
+      console.error('인형 재생 API 호출 오류:', error);
+    } finally {
+      setIsLoadingDoll(false);
+    }
+  };
+
+  // Q&A 데이터 불러오기
+  const fetchQAData = async () => {
+    setQaLoading(true);
+    try {
+      const response = await getRequest(`/api/dashboard/questions/${route.params.story.id}`);
+      setQaData(response.qnAs || []);
+    } catch (error) {
+      console.error('Q&A 데이터를 가져오는 중 오류 발생:', error);
+    } finally {
+      setQaLoading(false);
+    }
+  };
+
+  // Q&A 시작
+  const startQA = async () => {
+    if (!selectedChild) {
+      alert('먼저 자녀를 선택해 주세요.');
+      return;
+    }
+    try {
+      await postRequest(
+        `/api/modules/questions/${qaData[0]?.id}/${selectedChild}`
+      );
+      setShowQAModal(false);
+    } catch (error) {
+      console.error('Q&A 모듈 실행 중 오류 발생:', error);
+    }
   };
 
   return (
@@ -154,25 +232,125 @@ export default function PlayScreen({ route, navigation }: any) {
 
         <View style={styles.actionButtons}>
           {/* Q&A 생성 버튼 */}
-          <TouchableOpacity style={styles.button} onPress={() => console.log('Q&A 생성')}>
+          <TouchableOpacity style={styles.button} onPress={() => {
+            setShowQAModal(true);
+            fetchQAData();
+          }}>
             <Ionicons name="chatbubble-ellipses-outline" size={20} color="#666" />
             <Text style={styles.buttonText}>Q&A 생성</Text>
           </TouchableOpacity>
 
+          {/* Q&A 모달 */}
+          <Modal visible={showQAModal} transparent={true} animationType="fade">
+            <View style={styles.qaModalBackground}>
+              <View style={styles.qaModalContent}>
+                {/* 닫기 버튼 */}
+                <TouchableOpacity
+                  style={styles.closeButton}
+                  onPress={() => setShowQAModal(false)}
+                >
+                  <Text style={styles.closeButtonText}>닫기</Text>
+                </TouchableOpacity>
+      
+              {/* 자녀 선택 드롭다운 */}
+              <View style={styles.childPickerContainer}>
+                <RNPickerSelect
+                  onValueChange={(value) => setSelectedChild(value)} // 선택된 자녀 ID 업데이트
+                  items={children.map((child: any) => ({
+                    label: child.name, // 자녀 이름
+                    value: child.id, // 자녀 ID
+                  }))}
+                  style={pickerSelectStyles} // 드롭다운 스타일
+                  placeholder={{ label: '자녀를 선택해주세요.', value: null }} // 기본 값
+                  value={selectedChild}
+                />
+              </View>
+
+              {/* 자녀 리스트 */}
+              {showChildrenList && (
+                <ScrollView horizontal style={styles.childrenList}>
+                  {children.map((child: any) => (
+                    <TouchableOpacity
+                      key={child.id}
+                      style={[
+                        styles.childItem,
+                        selectedChild === child.id && styles.selectedChildItem,
+                      ]}
+                      onPress={() => {
+                        setSelectedChild(child.id); // 자녀 선택
+                        setShowChildrenList(false); // 리스트 닫기
+                      }}
+                    >
+                      <Text
+                        style={
+                          selectedChild === child.id
+                            ? { color: '#fff' }
+                            : { color: '#000' }
+                        }
+                      >
+                        {child.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              )}
+
+              {/* Q&A 내용 */}
+              <ScrollView style={styles.qaContent}>
+                {qaLoading ? (
+                  <ActivityIndicator size="large" color="#4A90E2" />
+                ) : (
+                  qaData.map((qa, index) => (
+                    <View key={index} style={styles.qaItem}>
+                      <Text style={styles.qaQuestion}>
+                        Q{index + 1}: {qa.question}
+                      </Text>
+                      <Text style={styles.qaAnswer}>
+                        예시 답안: {qa.sampleAnswer}
+                      </Text>
+                    </View>
+                  ))
+                )}
+              </ScrollView>
+
+                {/* Q&A 시작 버튼 */}
+                <TouchableOpacity
+                  style={[
+                    styles.startQAButton,
+                    !selectedChild && { backgroundColor: '#ccc' }, // 자녀 선택 없으면 비활성화
+                  ]}
+                  onPress={startQA}
+                  disabled={!selectedChild}
+                >
+                  <Text style={styles.startQAButtonText}>Q&A 시작하기</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          </Modal>
+
           {/* 인형 재생 버튼 */}
-          <TouchableOpacity style={styles.button} onPress={() => console.log('인형 재생')}>
-            <Ionicons name="play-circle-outline" size={20} color="#666" />
+          <TouchableOpacity
+            style={styles.button}
+            onPress={handleDollPlay}
+            disabled={isLoadingDoll || isDollPlaying}
+          >
+            {isLoadingDoll ? (
+              <ActivityIndicator size="small" color="#666" />
+            ) : (
+              <Ionicons name="play-circle-outline" size={20} color="#666" />
+            )}
             <Text style={styles.buttonText}>인형 재생</Text>
           </TouchableOpacity>
         </View>
       </View>
 
+      {/* 텍스트 모달 */}
       <Modal visible={showModal} animationType="slide" transparent={true}>
         <PanGestureHandler onEnded={handleGestureClose}>
           <SafeAreaView style={styles.modalContainer}>
             <View style={styles.modalHeader}>
               <Image
-                source={require('../assets/images/cover2.png')}
+                source={{uri : StoryCoverUrl}}
                 style={styles.modalThumbnail}
               />
               <Text style={styles.modalTitle}>{storyData.title}</Text>
@@ -187,9 +365,9 @@ export default function PlayScreen({ route, navigation }: any) {
                   key={index}
                   style={[
                     styles.sentenceText,
-                    index === activeSentenceIndex && { fontWeight: 'bold', color: '#000' },
+                    index === activeSentenceIndex && { fontWeight: 'bold', color: '#4666FF' }, // 현재 문장 하이라이트
                   ]}
-                  onPress={() => handleSentencePress(index)}
+                  onPress={() => handleSentencePress(index)} // 문장 클릭 시 이동
                 >
                   {sentence}
                 </Text>
@@ -197,6 +375,25 @@ export default function PlayScreen({ route, navigation }: any) {
             </ScrollView>
           </SafeAreaView>
         </PanGestureHandler>
+      </Modal>
+
+      <Modal visible={isDollPlayModalVisible} transparent={true} animationType="fade">
+        <View style={styles.dollPlayModalBackground}>
+          <View style={styles.dollPlayModalContent}>
+            <Text style={styles.dollPlayModalTitle}>인형이 동화를 재생 중입니다</Text>
+            <Text style={styles.dollPlayModalMessage}>
+              동화가 끝날 때까지 조작이 불가능합니다.
+            </Text>
+            {isDollPlayCloseEnabled && (
+              <TouchableOpacity
+                style={styles.dollPlayModalCloseButton}
+                onPress={() => setIsDollPlayModalVisible(false)}
+              >
+                <Text style={styles.dollPlayModalCloseButtonText}>닫기</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
       </Modal>
     </SafeAreaView>
   );
@@ -344,5 +541,140 @@ const styles = StyleSheet.create({
     fontSize: 16,
     lineHeight: 24,
     color: '#333',
+  },
+  dollPlayModalBackground: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.7)', // 약간 어두운 투명 배경
+  },
+  dollPlayModalContent: {
+    backgroundColor: '#fff', // 밝은 배경
+    padding: 30,
+    borderRadius: 15,
+    alignItems: 'center',
+    width: Dimensions.get('window').width * 0.8, // 화면 너비의 80%
+  },
+  dollPlayModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+    color: '#333',
+    textAlign: 'center',
+  },
+  dollPlayModalMessage: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  dollPlayModalCloseButton: {
+    backgroundColor: '#4A90E2',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+  },
+  dollPlayModalCloseButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  qaModalBackground: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  qaModalContent: {
+    width: Dimensions.get('window').width * 0.9,
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 15,
+  },
+  qaModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 15,
+  },
+  closeButtonText: {
+    color: '#666',
+    fontSize: 16,
+  },
+  childrenList: {
+    flexDirection: 'row',
+    marginBottom: 20,
+  },
+  childItem: {
+    padding: 10,
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#ddd',
+    borderRadius: 10,
+  },
+  selectedChildItem: {
+    backgroundColor: '#4A90E2',
+    borderColor: '#4A90E2',
+  },
+  qaContent: {
+    marginBottom: 20,
+  },
+  qaItem: {
+    marginBottom: 10,
+  },
+  qaQuestion: {
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  qaAnswer: {
+    fontSize: 14,
+    color: '#666',
+  },
+  startQAButton: {
+    backgroundColor: '#4A90E2',
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  startQAButtonText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  selectChildButton: {
+    backgroundColor: '#f0f0f0',
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 10,
+    alignItems: 'center',
+  },
+  selectChildButtonText: {
+    fontSize: 16,
+    color: '#333',
+  },
+  childPickerContainer: {
+    marginVertical: 10, // 드롭다운 위아래 간격
+  },
+});
+
+const pickerSelectStyles = StyleSheet.create({
+  inputIOS: {
+    fontSize: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    color: '#333',
+    paddingRight: 30,
+    backgroundColor: '#FFFFFF',
+    marginVertical: 10,
+  },
+  inputAndroid: {
+    fontSize: 14,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    color: '#333',
+    paddingRight: 30,
+    backgroundColor: '#FFFFFF',
+    marginVertical: 10,
   },
 });

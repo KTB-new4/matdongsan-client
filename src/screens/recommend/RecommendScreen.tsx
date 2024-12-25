@@ -30,16 +30,18 @@ const RecommendScreen: React.FC = () => {
     const fetchStories = async () => {
       try {
         const popularParams = {
-          sort: 'popular',
+          sortBy: 'popular',
           language: 'all',
           age: 'main',
-          pageable: { page: 0, size: 10, sort: ['popular'] },
+          page: 0,
+          size: 10,
         };
         const latestParams = {
-          sort: 'recent',
+          sortBy: 'recent',
           language: 'all',
           age: 'main',
-          pageable: { page: 0, size: 10, sort: ['recent'] },
+          page: 0,
+          size: 10,
         };
 
         console.log('Fetching popular stories with params:', popularParams);
@@ -74,7 +76,7 @@ const RecommendScreen: React.FC = () => {
       <Image source={{ uri: item.coverUrl }} style={styles.image} />
       <View style={styles.textContainer}>
         <Text style={styles.titleText}>{item.title}</Text>
-        <Text style={styles.tagText}>{item.tag || ''}</Text>
+        <Text style={styles.tagText}>{item.tag || '#기타'}</Text>
       </View>
     </TouchableOpacity>
   );

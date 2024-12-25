@@ -1,9 +1,9 @@
-import React, { useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet, ActivityIndicator, Text, Dimensions } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, FlatList, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import StorySummary from '../../../components/StorySummary';
-import { useNavigation, NavigationProp } from '@react-navigation/native';
+import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../../../navigation/AppNavigator';
-import { getRequest } from '../../../api/apiManager'; // API 호출 함수
+import { getRequest } from '../../../api/apiManager';
 
 interface Story {
   id: string;
@@ -14,39 +14,43 @@ interface Story {
   coverUrl: string;
 }
 
-interface AllStoryProps {
-  searchQuery: string; // 검색어
-  sortOption: string; // 정렬 옵션
+interface LevelOneStoryProps {
+  searchQuery: string;
+  sortOption: string;
 }
 
-const screenWidth = Dimensions.get('window').width;
-const imageSize = (screenWidth - 40) / 2; // 이미지 크기
-
-const LevelOneStory: React.FC<AllStoryProps> = ({ searchQuery, sortOption }) => {
+const LevelOneStory: React.FC<LevelOneStoryProps> = ({ searchQuery, sortOption }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList, 'StoryDetail'>>();
   const [stories, setStories] = useState<Story[]>([]);
   const [filteredStories, setFilteredStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState<number>(0);
+  const [hasMore, setHasMore] = useState<boolean>(true); // 데이터가 더 있는지 여부
+  const pageSize = 10;
 
-  // 서버에서 동화 목록 가져오기
-  const fetchStories = async () => {
+  const fetchStories = async (currentPage: number, reset: boolean = false) => {
     try {
-      setLoading(true);
-      const response = await getRequest('/api/library', {
-        params: {
-          sort: sortOption,
-          language: 'all',
-          age: 'main',
-          pageable: {
-            page: 0,
-            size: 10,
-            sort: [sortOption],
-          },
-        },
-      });
+      if (reset) {
+        setLoading(true);
+        setHasMore(true); // 데이터가 더 있을 가능성을 초기화
+        setPage(0); // 페이지 초기화
+      } else if (currentPage > 0) {
+        setLoadingMore(true);
+      }
 
-      const formattedStories: Story[] = response.content.map((item: any) => ({
+      const params = {
+        sortBy: sortOption,
+        language: 'all',
+        age: 'lv1',
+        page: currentPage,
+        size: pageSize,
+      };
+
+      const response = await getRequest('/api/library', params);
+
+      const newStories = response.content.map((item: any) => ({
         id: item.id,
         title: item.title,
         author: item.author,
@@ -55,42 +59,66 @@ const LevelOneStory: React.FC<AllStoryProps> = ({ searchQuery, sortOption }) => 
         coverUrl: item.coverUrl,
       }));
 
-      setStories(formattedStories);
+      setStories((prevStories) => {
+        if (reset) return newStories; // 초기화 시 새로운 데이터로 교체
+        const existingIds = new Set(prevStories.map((story) => story.id));
+        const uniqueStories = newStories.filter((story: Story) => !existingIds.has(story.id));
+        return [...prevStories, ...uniqueStories]; // 추가 로드 시 기존 데이터에 합침
+      });
+
+      if (newStories.length < pageSize) {
+        setHasMore(false); // 데이터가 더 이상 없음을 표시
+      }
     } catch (err) {
-      console.error('Error fetching stories:', err);
+      console.error('LevelOneStory 데이터 요청 오류:', err);
       setError('동화 목록을 불러오지 못했습니다.');
     } finally {
-      setLoading(false);
+      if (reset) {
+        setLoading(false);
+      } else {
+        setLoadingMore(false);
+      }
     }
   };
 
-  useEffect(() => {
-    fetchStories();
-  }, [sortOption]);
+  // 화면으로 돌아왔을 때 데이터를 초기화하고 첫 페이지 로드
+  useFocusEffect(
+    useCallback(() => {
+      fetchStories(0, true); // 데이터를 초기화하고 처음부터 로드
+    }, [sortOption])
+  );
 
+  // 검색어에 따른 필터링
   useEffect(() => {
-    let updatedStories = [...stories];
-    if (searchQuery.trim() !== '') {
-      updatedStories = updatedStories.filter((story) =>
-        story.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
+    const updatedStories = searchQuery.trim()
+      ? stories.filter((story) =>
+          story.title.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : stories;
+
     setFilteredStories(updatedStories);
   }, [searchQuery, stories]);
 
-  // 항목 렌더링
+  const loadMoreStories = () => {
+    if (!loadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchStories(nextPage);
+    }
+  };
+
   const renderItem = ({ item }: { item: Story }) => (
     <StorySummary
       tag={item.tag}
-      title={item.title.length > 15 ? `${item.title.slice(0, 15)}...` : item.title} // 제목 길이 제한
+      title={item.title.length > 15 ? `${item.title.slice(0, 15)}...` : item.title}
       author={item.author}
       likes={item.likes}
       onPress={() => navigation.navigate('StoryDetail', { storyId: item.id })}
-      coverUrl={item.coverUrl} // 서버에서 가져온 커버 이미지
+      coverUrl={item.coverUrl}
     />
   );
 
-  if (loading) {
+  if (loading && page === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4A90E2" />
@@ -114,6 +142,15 @@ const LevelOneStory: React.FC<AllStoryProps> = ({ searchQuery, sortOption }) => 
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={styles.listContainer}
+        onEndReached={loadMoreStories}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.footerLoading}>
+              <ActivityIndicator size="small" color="#4A90E2" />
+            </View>
+          ) : null
+        }
       />
     </View>
   );
@@ -132,6 +169,9 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  footerLoading: {
+    marginVertical: 20,
   },
   errorContainer: {
     flex: 1,

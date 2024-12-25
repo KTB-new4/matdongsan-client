@@ -31,7 +31,8 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
         console.log("API 응답 데이터:", response); // 응답 확인
 
         if (response) {
-          setTtsLink(response); // TTS 링크 설정
+          setTtsLink(response.ttsUrl); // TTS 링크 설정
+          setTimestamps(response.timestamps);
           setIsLoading(false); // 로딩 상태 해제
           return;
         } else{
@@ -73,6 +74,7 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
   const [tagInput, setTagInput] = useState('');
   const [isPublished, setIsPublished] = useState(false);
   const [ttsLink, setTtsLink] = useState<string | null>(null);
+  const [timestamps, setTimestamps] = useState<number[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   const StoryCover = story.coverUrl;
@@ -182,7 +184,7 @@ const StoryCreateFinishScreen: React.FC = ({ route, navigation }: any) => {
         index: 1,
         routes: [
           { name: 'MainTabs', params: { screen: 'HomeNav', params: { screen: 'Home' } } },
-          { name: 'PlayScreen', params: { story: updatedStory, isFromCreation: true, ttsLink } },
+          { name: 'PlayScreen', params: { story: updatedStory, isFromCreation: true, ttsLink, timestamps } },
         ],
       })
     );

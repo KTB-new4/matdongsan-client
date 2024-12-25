@@ -16,18 +16,24 @@ type StorySummaryProps = {
 const StorySummary: React.FC<StorySummaryProps> = ({ tag, title, author, likes, onPress, coverUrl }) => {
   return (
     <TouchableOpacity style={styles.container} onPress={onPress}>
-      <View style={styles.coverContainer}>
-        <Image style={styles.cover} source={{ uri: coverUrl }} />
-        <View style={styles.likesContainer}>
-          <Text style={styles.likeIcon}>❤️</Text>
-          <Text style={styles.likes}>{likes.toLocaleString()}</Text>
+      <View style={styles.cardContainer}>
+        <View style={styles.coverContainer}>
+          <Image style={styles.cover} source={{ uri: coverUrl }} />
+          <View style={styles.likesContainer}>
+            <Text style={styles.likeIcon}>♥</Text>
+            <Text style={styles.likes}>{likes >= 1000 ? `${(likes/1000).toFixed(1)}k` : likes}</Text>
+          </View>
+        </View>
+        <View style={styles.infoContainer}>
+          <Text style={styles.title} numberOfLines={1} ellipsizeMode="tail">
+            {title}
+          </Text>
+          <View style={styles.tagContainer}>
+            <Text style={styles.tagPrefix}></Text>
+            <Text style={styles.tag}>{tag}</Text>
+          </View>
         </View>
       </View>
-      <Text style={styles.tag}>#{tag}</Text>
-      <Text numberOfLines={1} ellipsizeMode="tail" style={styles.title}>
-        {title}
-      </Text>
-      <Text style={styles.author}>{author}</Text>
     </TouchableOpacity>
   );
 };
@@ -35,52 +41,76 @@ const StorySummary: React.FC<StorySummaryProps> = ({ tag, title, author, likes, 
 const styles = StyleSheet.create({
   container: {
     marginBottom: 20,
-    marginRight: 5,
-    alignItems: 'center',
+    marginHorizontal: 5,
+    width: imageSize,
+  },
+  cardContainer: {
+    width: imageSize,
+    borderRadius: 16,
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
   coverContainer: {
     position: 'relative',
-  },
-  cover: {
     width: imageSize,
     height: imageSize,
-    backgroundColor: '#ccc',
-    borderRadius: 8,
+  },
+  cover: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 16,
   },
   likesContainer: {
     position: 'absolute',
-    bottom: 5,
-    right: 5,
-    backgroundColor: 'rgba(200, 200, 200, 0.8)',
-    borderRadius: 5,
+    bottom: 8,
+    right: 8,
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
   },
   likeIcon: {
-    color: 'red',
+    color: '#ff3b30',
+    fontSize: 16,
     marginRight: 4,
   },
   likes: {
-    color: '#333',
-    fontSize: 12,
+    color: '#0066ff',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  tag: {
-    fontSize: 12,
-    color: '#333',
-    marginTop: 5,
+  infoContainer: {
+    padding: 12,
   },
   title: {
     fontSize: 14,
-    fontWeight: 'bold',
+    fontWeight: '600',
     color: '#000',
-    width: imageSize,
-    textAlign: 'center',
+    marginBottom: 4,
   },
-  author: {
-    fontSize: 12,
+  tagContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  tagPrefix: {
     color: '#666',
+    fontSize: 12,
+    marginRight: 1,
+  },
+  tag: {
+    color: '#666',
+    fontSize: 12,
   },
 });
 
 export default StorySummary;
+

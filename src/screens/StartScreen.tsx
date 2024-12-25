@@ -6,6 +6,8 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Image,
+  ImageBackground,
 } from 'react-native';
 import { postRequest } from '../api/apiManager'; // API 관리 모듈
 import * as KakaoLogins from '@react-native-seoul/kakao-login'; // Kakao SDK 사용
@@ -77,42 +79,45 @@ const StartScreen = ({ navigation }: any) => {
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Matdongsan에 오신 것을 환영합니다!</Text>
-      {loading ? (
-        <ActivityIndicator size="large" color="#0000ff" />
-      ) : (
-        <TouchableOpacity style={styles.loginButton} onPress={handleKakaoLogin}>
+    <ImageBackground
+      source={require('../assets/images/startscreen.png')}
+      style={styles.background}
+    >
+      <Image
+        source={require('../assets/images/brandImage.png')}
+        style={styles.brandImage}
+        resizeMode="cover"
+      />
+
+      <TouchableOpacity style={styles.loginButton} onPress={handleKakaoLogin}>
+        {loading ? (
+          <ActivityIndicator size="large" color="#0000ff" />
+        ) : (
           <Text style={styles.loginButtonText}>카카오 계정으로 시작하기</Text>
-        </TouchableOpacity>
-      )}
-    </View>
+        )}
+      </TouchableOpacity>
+    </ImageBackground>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  background: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#f9f9f9',
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-    color: '#333',
+  brandImage: {
+    width: '100%',
+    height: '40%', // 상단에 꽉 차도록 설정
+    marginTop: 0,
   },
   loginButton: {
+    position: 'absolute',
+    bottom: 0,
+    width: '100%',
     backgroundColor: '#FEE500',
-    padding: 15,
-    borderRadius: 8,
+    paddingVertical: 30,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.2,
-    shadowOffset: { width: 1, height: 1 },
-    shadowRadius: 2,
-    elevation: 3,
   },
   loginButtonText: {
     color: '#000',

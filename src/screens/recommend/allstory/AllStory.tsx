@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { View, FlatList, StyleSheet, ActivityIndicator, Text, Dimensions } from 'react-native';
+import { View, FlatList, StyleSheet, ActivityIndicator, Text } from 'react-native';
 import StorySummary from '../../../components/StorySummary';
 import { useNavigation, NavigationProp, useFocusEffect } from '@react-navigation/native';
 import { RootStackParamList } from '../../../navigation/AppNavigator';
@@ -24,34 +24,33 @@ const AllStory: React.FC<AllStoryProps> = ({ searchQuery, sortOption }) => {
   const [stories, setStories] = useState<Story[]>([]);
   const [filteredStories, setFilteredStories] = useState<Story[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [loadingMore, setLoadingMore] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState<number>(0);
+  const [hasMore, setHasMore] = useState<boolean>(true); // 데이터가 더 있는지 여부
+  const pageSize = 10;
 
-  const fetchStories = async () => {
+  const fetchStories = async (currentPage: number, reset: boolean = false) => {
     try {
-      setLoading(true);
-  
-      // 요청 파라미터
+      if (reset) {
+        setLoading(true);
+        setHasMore(true); // 데이터가 더 있을 가능성을 초기화
+        setPage(0); // 페이지 초기화
+      } else if (currentPage > 0) {
+        setLoadingMore(true);
+      }
+
       const params = {
-        sort: sortOption, // 최신순 또는 인기순
+        sortBy: sortOption,
         language: 'all',
         age: 'main',
-        pageable: {
-          page: 0,
-          size: 10, // RecommendScreen과 동일한 페이지 크기
-        },
+        page: currentPage,
+        size: pageSize,
       };
-  
-      // 요청 파라미터 로그
-      console.log('AllStory 요청 파라미터:', params);
-  
-      // 서버 요청
+
       const response = await getRequest('/api/library', params);
-  
-      // 응답 로그
-      console.log('AllStory 서버 응답:', response);
-  
-      // 데이터 변환
-      const formattedStories = response.content.map((item: any) => ({
+
+      const newStories = response.content.map((item: any) => ({
         id: item.id,
         title: item.title,
         author: item.author,
@@ -59,32 +58,54 @@ const AllStory: React.FC<AllStoryProps> = ({ searchQuery, sortOption }) => {
         tag: item.tags?.[0] || '기타',
         coverUrl: item.coverUrl,
       }));
-  
-      setStories(formattedStories);
+
+      setStories((prevStories) => {
+        if (reset) return newStories; // 초기화 시 새로운 데이터로 교체
+        const existingIds = new Set(prevStories.map((story) => story.id));
+        const uniqueStories = newStories.filter((story: Story) => !existingIds.has(story.id));
+        return [...prevStories, ...uniqueStories]; // 추가 로드 시 기존 데이터에 합침
+      });
+
+      if (newStories.length < pageSize) {
+        setHasMore(false); // 데이터가 더 이상 없음을 표시
+      }
     } catch (err) {
       console.error('AllStory 데이터 요청 오류:', err);
       setError('동화 목록을 불러오지 못했습니다.');
     } finally {
-      setLoading(false);
+      if (reset) {
+        setLoading(false);
+      } else {
+        setLoadingMore(false);
+      }
     }
   };
 
+  // 화면으로 돌아왔을 때 데이터를 초기화하고 첫 페이지 로드
   useFocusEffect(
     useCallback(() => {
-      fetchStories();
+      fetchStories(0, true); // 데이터를 초기화하고 처음부터 로드
     }, [sortOption])
   );
 
+  // 검색어에 따른 필터링
   useEffect(() => {
-    let updatedStories = [...stories];
+    const updatedStories = searchQuery.trim()
+      ? stories.filter((story) =>
+          story.title.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : stories;
 
-    if (searchQuery.trim() !== '') {
-      updatedStories = updatedStories.filter((story) =>
-        story.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
     setFilteredStories(updatedStories);
   }, [searchQuery, stories]);
+
+  const loadMoreStories = () => {
+    if (!loadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchStories(nextPage);
+    }
+  };
 
   const renderItem = ({ item }: { item: Story }) => (
     <StorySummary
@@ -97,7 +118,7 @@ const AllStory: React.FC<AllStoryProps> = ({ searchQuery, sortOption }) => {
     />
   );
 
-  if (loading) {
+  if (loading && page === 0) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#4A90E2" />
@@ -121,6 +142,15 @@ const AllStory: React.FC<AllStoryProps> = ({ searchQuery, sortOption }) => {
         keyExtractor={(item) => item.id}
         numColumns={2}
         contentContainerStyle={styles.listContainer}
+        onEndReached={loadMoreStories}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          loadingMore ? (
+            <View style={styles.footerLoading}>
+              <ActivityIndicator size="small" color="#4A90E2" />
+            </View>
+          ) : null
+        }
       />
     </View>
   );
@@ -133,12 +163,15 @@ const styles = StyleSheet.create({
     backgroundColor: '#F8F9FF',
   },
   listContainer: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 1,
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  footerLoading: {
+    marginVertical: 20,
   },
   errorContainer: {
     flex: 1,
