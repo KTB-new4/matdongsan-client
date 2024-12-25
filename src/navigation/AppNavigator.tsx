@@ -137,6 +137,8 @@ const MainTabNavigator = () => {
         },
         tabBarActiveTintColor: '#4A90E2',
         tabBarInactiveTintColor: 'gray',
+        resetOnBlur: true,
+        unmountOnBlur: true,
       })}
     >
       <Tab.Screen
@@ -193,3 +195,4 @@ const AppNavigator = () => (
 );
 
 export default AppNavigator;
+

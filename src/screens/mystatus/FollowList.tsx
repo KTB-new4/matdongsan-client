@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Dimensions, FlatList, StyleSheet, ActivityIndicator, View, Text } from 'react-native';
 import FollowSummary from '../../components/FollowSummary';
-import { NavigationProp, useNavigation } from '@react-navigation/native';
+import { NavigationProp, useFocusEffect, useNavigation } from '@react-navigation/native';
 import { RootStackParamList } from '../../navigation/AppNavigator';
 import { getRequest } from '../../api/apiManager';
 
@@ -37,9 +37,12 @@ const FollowList: React.FC = () => {
     }
   };
 
-  useEffect(() => {
-    fetchFollowList();
-  }, []);
+  // 화면으로 돌아올 때 팔로우 리스트 갱신
+  useFocusEffect(
+    useCallback(() => {
+      fetchFollowList();
+    }, [])
+  );
 
   const renderItem = ({ item }: { item: FollowData }) => (
     <FollowSummary

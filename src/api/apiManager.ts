@@ -4,7 +4,7 @@ import { getServerTokens, refreshTokens } from './serverTokenManager';
 
 const api = axios.create({
   baseURL: 'http://3.35.49.154/', // 서버 주소
-  timeout: 30000, // 30초 타임아웃
+  timeout: 60000, // 60초 타임아웃
 });
 
 // 공통 에러 처리

@@ -98,13 +98,13 @@ const MyProfileScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#ffffff',
   },
   profileContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: '#ffffff',
   },
   profileImage: {
     width: 80,
