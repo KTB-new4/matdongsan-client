@@ -16,10 +16,9 @@ interface Story {
 
 interface LikeStoryProps {
   searchQuery: string;
-  sortOption: string;
 }
 
-const LikeStory: React.FC<LikeStoryProps> = ({ searchQuery, sortOption }) => {
+const LikeStory: React.FC<LikeStoryProps> = ({ searchQuery }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList, 'StoryDetail'>>();
   const [stories, setStories] = useState<Story[]>([]);
   const [filteredStories, setFilteredStories] = useState<Story[]>([]);
@@ -41,7 +40,6 @@ const LikeStory: React.FC<LikeStoryProps> = ({ searchQuery, sortOption }) => {
       }
 
       const params = {
-        sortBy: sortOption,
         language: 'all',
         age: 'main',
         page: currentPage,
@@ -85,7 +83,7 @@ const LikeStory: React.FC<LikeStoryProps> = ({ searchQuery, sortOption }) => {
   useFocusEffect(
     useCallback(() => {
       fetchStories(0, true); // 데이터를 초기화하고 처음부터 로드
-    }, [sortOption])
+    }, [])
   );
 
   // 검색어에 따른 필터링

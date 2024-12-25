@@ -56,14 +56,21 @@ const FollowStoryList: React.FC = () => {
 
   const { authorId } = route.params;
 
-  const fetchAuthorData = async () => {
-    try {
-      const response: AuthorData = await getRequest(`/api/members/${authorId}`);
-      setAuthorData(response);
-    } catch (err) {
-      console.error('Error fetching author data:', err);
-    }
-  };
+    // 디버깅용 로그 추가
+    useEffect(() => {
+      console.log('Received authorId:', authorId);
+    }, [authorId]);
+
+    const fetchAuthorData = async () => {
+      try {
+        console.log('Fetching author data for authorId:', authorId);
+        const response: AuthorData = await getRequest(`/api/members/${authorId}`);
+        console.log('Author Data Response:', response);
+        setAuthorData(response);
+      } catch (err) {
+        console.error('Error fetching author data:', err);
+      }
+    };
 
   const fetchStories = async (page: number, isLoadingMore: boolean = false) => {
     try {
@@ -130,12 +137,16 @@ const FollowStoryList: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchAuthorData();
-    setCurrentPage(0);
-    setHasMore(true);
-    fetchStories(0);
-    fetchFollowStatus();
-  }, [selectedSort]);
+    setAuthorData(null); // 이전 작가 데이터 초기화
+    setStories([]);      // 이전 스토리 초기화
+    setCurrentPage(0);   // 페이지 초기화
+    setHasMore(true);    // 추가 로드 가능 상태 초기화
+    if (authorId) {
+      fetchAuthorData();
+      fetchStories(0);
+      fetchFollowStatus();
+    }
+  }, [authorId, selectedSort]);
 
   const handleLoadMore = () => {
     if (!loadingMore && hasMore) {

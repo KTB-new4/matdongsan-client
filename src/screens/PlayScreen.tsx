@@ -47,12 +47,12 @@ export default function PlayScreen({ route, navigation }: any) {
   const [qaLoading, setQaLoading] = useState(false);
 
   const sentences = storyData.content
-  .replace(/(?<=[”"])\s(?=\w)/g, '\n') // 큰따옴표 뒤의 공백을 줄바꿈으로 변환
-  .split(/(?<=[.!?])\s+/) // . ! ? 뒤의 공백을 기준으로 분리
-  .filter((sentence: string) => sentence.trim()); // 빈 문장은 제거
+  .replace(/(?<=[”"]) (?=\w)/g, '\n') // 큰따옴표 뒤의 공백을 줄바꿈으로 변환
+  .split('\n') // 줄바꿈(\n)을 기준으로 문장 분리
+  .map((sentence: string) => sentence.trim()) // 문장 양쪽 공백 제거
+  .filter((sentence: string) => sentence.length > 0); // 빈 문장 제거
 
   const StoryCoverUrl = storyData.coverUrl || undefined;
-  console.log(StoryCoverUrl)
 
   useEffect(() => {
     // TTS 링크를 기반으로 오디오 로드
@@ -131,9 +131,20 @@ export default function PlayScreen({ route, navigation }: any) {
   const handleSentencePress = (index: number) => {
     if (timestamps[index] !== undefined) {
       const targetTime = timestamps[index];
-      seekTo(targetTime); // 해당 타임스탬프 위치로 이동
-      setActiveSentenceIndex(index); // 선택한 문장을 활성화
-      setIsPlaying(true); // 재생 시작
+  
+      // 타임스탬프 시간으로 이동
+      seekTo(targetTime);
+  
+      // 현재 문장 활성화 및 재생
+      setActiveSentenceIndex(index);
+      
+      // 재생 상태로 설정
+      if (soundRef.current) {
+        soundRef.current.play(() => setIsPlaying(false));
+        setIsPlaying(true);
+      }
+    } else {
+      console.warn(`해당 문장의 타임스탬프가 없습니다: index ${index}`);
     }
   };
 
@@ -359,7 +370,7 @@ export default function PlayScreen({ route, navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalContent}>
+            <ScrollView style={styles.modalContent} contentContainerStyle={{paddingBottom: 40}}>
               {sentences.map((sentence: string, index: number) => (
                 <Text
                   key={index}

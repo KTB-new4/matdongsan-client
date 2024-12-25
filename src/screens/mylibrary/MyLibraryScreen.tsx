@@ -9,11 +9,6 @@ const TopTab = createMaterialTopTabNavigator();
 
 const MyLibraryScreen: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>(''); 
-  const [sortOption, setSortOption] = useState<string>('recent'); 
-
-  const handleSortChange = () => {
-    setSortOption(sortOption === 'recent' ? 'popular' : 'recent');
-  };
 
   return (
     <SafeAreaView style={styles.container}>
@@ -28,15 +23,6 @@ const MyLibraryScreen: React.FC = () => {
               onChangeText={setSearchQuery}
             />
           </View>
-          <TouchableOpacity 
-            style={styles.sortButton}
-            onPress={handleSortChange}
-          >
-            <Text style={styles.sortButtonText}>
-              {sortOption === 'recent' ? '최신순' : '인기순'}
-            </Text>
-            <Icon name="chevron-down" size={20} color="#6366F1" />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -49,10 +35,10 @@ const MyLibraryScreen: React.FC = () => {
         }}
       >
         <TopTab.Screen name="RecentlySeenStory" options={{ tabBarLabel: '최근 읽은' }}>
-          {() => <RecentlySeenStory searchQuery={searchQuery} sortOption={sortOption} />}
+          {() => <RecentlySeenStory searchQuery={searchQuery} />}
         </TopTab.Screen>
         <TopTab.Screen name="LikeStory" options={{ tabBarLabel: '좋아요' }}>
-          {() => <LikeStory searchQuery={searchQuery} sortOption={sortOption} />}
+          {() => <LikeStory searchQuery={searchQuery} />}
         </TopTab.Screen>
       </TopTab.Navigator>
     </SafeAreaView>
@@ -92,20 +78,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 14,
     color: '#333',
-  },
-  sortButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    backgroundColor: '#f1f5f9',
-    gap: 4,
-  },
-  sortButtonText: {
-    fontSize: 14,
-    color: '#6366F1',
-    fontWeight: '600',
   },
 });
 

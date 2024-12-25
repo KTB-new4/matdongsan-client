@@ -14,12 +14,11 @@ interface Story {
   coverUrl: string;
 }
 
-interface RecentlySeenStoryProps {
+interface AllStoryProps {
   searchQuery: string;
-  sortOption: string;
 }
 
-const RecentlySeenStory: React.FC<RecentlySeenStoryProps> = ({ searchQuery, sortOption }) => {
+const RecentlySeenStory: React.FC<AllStoryProps> = ({ searchQuery }) => {
   const navigation = useNavigation<NavigationProp<RootStackParamList, 'StoryDetail'>>();
   const [stories, setStories] = useState<Story[]>([]);
   const [filteredStories, setFilteredStories] = useState<Story[]>([]);
@@ -40,9 +39,16 @@ const RecentlySeenStory: React.FC<RecentlySeenStoryProps> = ({ searchQuery, sort
         setLoadingMore(true);
       }
 
-      const response = await getRequest('/api/library/recent');
+      const params = {
+        language: 'all',
+        age: 'main',
+        page: currentPage,
+        size: pageSize,
+      };
 
-      const newStories = response.map((item: any) => ({
+      const response = await getRequest('/api/library/recent', params);
+
+      const newStories = response.content.map((item: any) => ({
         id: item.id,
         title: item.title,
         author: item.author,
@@ -80,26 +86,16 @@ const RecentlySeenStory: React.FC<RecentlySeenStoryProps> = ({ searchQuery, sort
     }, [])
   );
 
-  // 검색어와 정렬 옵션에 따른 필터링
+  // 검색어에 따른 필터링
   useEffect(() => {
-    let updatedStories = [...stories];
-
-    // 검색어 필터링
-    if (searchQuery.trim() !== '') {
-      updatedStories = updatedStories.filter((story) =>
-        story.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-    }
-
-    // 정렬 옵션 적용
-    if (sortOption === 'likes') {
-      updatedStories.sort((a, b) => b.likes - a.likes);
-    } else if (sortOption === 'title') {
-      updatedStories.sort((a, b) => a.title.localeCompare(b.title));
-    }
+    const updatedStories = searchQuery.trim()
+      ? stories.filter((story) =>
+          story.title.toLowerCase().includes(searchQuery.toLowerCase())
+        )
+      : stories;
 
     setFilteredStories(updatedStories);
-  }, [searchQuery, sortOption, stories]);
+  }, [searchQuery, stories]);
 
   const loadMoreStories = () => {
     if (!loadingMore && hasMore) {
