@@ -23,6 +23,7 @@ export default function PlayScreen({ route, navigation }: any) {
   // 데이터 초기화
   const storyData = route.params?.story || { title: '기본 제목', content: '' }; // 기본 데이터 설정
   const ttsLinkData = route.params?.ttsLink || undefined; // 기본 TTS 링크 설정
+  console.log('tts link : ', ttsLinkData);
   const timestamps: number[] = route.params?.timestamps || []; // 타임스탬프 데이터
 
   const soundRef = useRef<Sound | null>(null);
@@ -44,31 +45,53 @@ export default function PlayScreen({ route, navigation }: any) {
   const [children, setChildren] = useState([]); // 자녀 목록
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
   const [qaData, setQaData] = useState<any[]>([]); // Q&A 데이터
+  const [questionArrayId, setQuestionArrayId] = useState<number | null>(null); // 질문 배열 ID 상태 추가
   const [qaLoading, setQaLoading] = useState(false);
 
   const sentences = storyData.content
   .replace(/(?<=[”"]) (?=\w)/g, '\n') // 큰따옴표 뒤의 공백을 줄바꿈으로 변환
-  .split('\n') // 줄바꿈(\n)을 기준으로 문장 분리
-  .map((sentence: string) => sentence.trim()) // 문장 양쪽 공백 제거
-  .filter((sentence: string) => sentence.length > 0); // 빈 문장 제거
+  .split(/\n/) // 줄바꿈(\n)을 기준으로 문장 분리
+  .filter((sentence: string) => sentence.trim()); // 빈 문장은 제거
 
   const StoryCoverUrl = storyData.coverUrl || undefined;
+  console.log(StoryCoverUrl)
 
   useEffect(() => {
-    // TTS 링크를 기반으로 오디오 로드
-    soundRef.current = new Sound(ttsLinkData, '', (error) => {
-      if (error) {
-        console.log('오디오 파일 로드 오류:', error);
-        return;
-      }
-      if (soundRef.current) {
-        setDuration(soundRef.current.getDuration());
-      }
-    });
+    // Enable playback in silence mode
+    Sound.setCategory('Playback');
 
-    return () => {
-      soundRef.current?.release();
-    };
+    // Properly handle the TTS URL
+    if (ttsLinkData) {
+      console.log('Loading audio from:', ttsLinkData);
+      
+      // Release previous instance if it exists
+      if (soundRef.current) {
+        soundRef.current.release();
+      }
+
+      // Create new Sound instance with proper remote URL handling
+      const sound = new Sound(ttsLinkData, '', (error) => {
+        if (error) {
+          console.error('Failed to load sound', error);
+          return;
+        }
+        
+        console.log('Sound loaded successfully');
+        sound.setVolume(1.0);
+        
+        const duration = sound.getDuration();
+        console.log('Sound duration:', duration);
+        setDuration(duration);
+      });
+
+      soundRef.current = sound;
+
+      return () => {
+        if (sound) {
+          sound.release();
+        }
+      };
+    }
   }, [ttsLinkData]);
 
   useEffect(() => {
@@ -105,13 +128,35 @@ export default function PlayScreen({ route, navigation }: any) {
   }, []);
 
   const playPauseAudio = () => {
-    if (soundRef.current) {
-      if (isPlaying) {
-        soundRef.current.pause();
-      } else {
-        soundRef.current.play(() => setIsPlaying(false));
+    if (!soundRef.current) {
+      console.error('Sound not initialized');
+      return;
+    }
+
+    console.log('Current playing state:', isPlaying);
+    
+    if (isPlaying) {
+      soundRef.current.pause(() => {
+        console.log('Audio paused successfully');
+        setIsPlaying(false);
+      });
+    } else {
+      // Reset to start if at the end
+      if (currentTime >= duration) {
+        soundRef.current.setCurrentTime(0);
       }
-      setIsPlaying(!isPlaying);
+
+      soundRef.current.play((success) => {
+        if (success) {
+          console.log('Audio finished playing successfully');
+        } else {
+          console.log('Audio playback failed');
+        }
+        setIsPlaying(false);
+      });
+
+      console.log('Starting audio playback');
+      setIsPlaying(true);
     }
   };
 
@@ -129,20 +174,32 @@ export default function PlayScreen({ route, navigation }: any) {
   };
 
   const handleSentencePress = (index: number) => {
+    if (!soundRef.current) {
+      console.error('Sound not initialized');
+      return;
+    }
+
     if (timestamps[index] !== undefined) {
       const targetTime = timestamps[index];
-  
+      console.log('Seeking to time:', targetTime);
+
       // 타임스탬프 시간으로 이동
-      seekTo(targetTime);
-  
+      soundRef.current.setCurrentTime(targetTime);
+      setCurrentTime(targetTime);
+
       // 현재 문장 활성화 및 재생
       setActiveSentenceIndex(index);
       
       // 재생 상태로 설정
-      if (soundRef.current) {
-        soundRef.current.play(() => setIsPlaying(false));
-        setIsPlaying(true);
-      }
+      soundRef.current.play((success) => {
+        if (success) {
+          console.log('Sentence playback finished successfully');
+        } else {
+          console.log('Sentence playback failed');
+        }
+        setIsPlaying(false);
+      });
+      setIsPlaying(true);
     } else {
       console.warn(`해당 문장의 타임스탬프가 없습니다: index ${index}`);
     }
@@ -171,33 +228,69 @@ export default function PlayScreen({ route, navigation }: any) {
   };
 
   // Q&A 데이터 불러오기
-  const fetchQAData = async () => {
-    setQaLoading(true);
-    try {
-      const response = await getRequest(`/api/dashboard/questions/${route.params.story.id}`);
-      setQaData(response.qnAs || []);
-    } catch (error) {
-      console.error('Q&A 데이터를 가져오는 중 오류 발생:', error);
-    } finally {
-      setQaLoading(false);
-    }
-  };
+const fetchQAData = async () => {
+  setQaLoading(true);
+  try {
+    const storyId = route.params?.story.id;
+    console.log('=== Fetching Q&A Data ===');
+    console.log('Story ID:', storyId, 'Type:', typeof storyId);
 
-  // Q&A 시작
-  const startQA = async () => {
-    if (!selectedChild) {
-      alert('먼저 자녀를 선택해 주세요.');
+    const response = await getRequest(`/api/dashboard/questions/${storyId}`);
+    console.log('Q&A Response:', response);
+
+    if (!response || !response.qnAs) {
+      alert('이 동화에 대한 질문 데이터가 없습니다.');
+      setQaData([]);
+      setQuestionArrayId(null); // 질문 배열 ID 초기화
       return;
     }
-    try {
-      await postRequest(
-        `/api/modules/questions/${qaData[0]?.id}/${selectedChild}`
-      );
-      setShowQAModal(false);
-    } catch (error) {
-      console.error('Q&A 모듈 실행 중 오류 발생:', error);
-    }
-  };
+
+    setQaData(response.qnAs);
+    setQuestionArrayId(response.id); // 질문 배열 ID 설정
+    console.log('Set question array ID:', response.id);
+  } catch (error) {
+    console.error('Q&A 데이터를 가져오는 중 오류 발생:', error);
+    alert('Q&A 데이터를 불러오는데 실패했습니다.');
+    setQaData([]);
+    setQuestionArrayId(null); // 질문 배열 ID 초기화
+  } finally {
+    setQaLoading(false);
+  }
+};
+
+// Q&A 시작
+const startQA = async () => {
+  if (!selectedChild) {
+    alert('먼저 자녀를 선택해 주세요.');
+    return;
+  }
+
+  if (!qaData || qaData.length === 0) {
+    alert('이 동화에 대한 질문 데이터가 없습니다.');
+    return;
+  }
+
+  if (!questionArrayId) {
+    alert('질문 배열 ID가 설정되지 않았습니다.');
+    return;
+  }
+
+  try {
+    console.log('=== Starting Q&A Process ===');
+    console.log('Processing question array ID:', questionArrayId);
+
+    const apiUrl = `/api/modules/questions/${questionArrayId}/${selectedChild}`;
+    console.log('Calling API with question array ID:', apiUrl);
+
+    const response = await getRequest(apiUrl);
+    console.log('Q&A API response:', response);
+
+    alert('Q&A가 성공적으로 시작되었습니다.');
+  } catch (error) {
+    console.error('Q&A 시작 중 오류 발생:', error);
+    alert('Q&A 시작 중 오류가 발생했습니다.');
+  }
+};
 
   return (
     <SafeAreaView style={styles.container}>
@@ -370,7 +463,7 @@ export default function PlayScreen({ route, navigation }: any) {
               </TouchableOpacity>
             </View>
 
-            <ScrollView style={styles.modalContent} contentContainerStyle={{paddingBottom: 40}}>
+            <ScrollView style={styles.modalContent}>
               {sentences.map((sentence: string, index: number) => (
                 <Text
                   key={index}
@@ -689,3 +782,4 @@ const pickerSelectStyles = StyleSheet.create({
     marginVertical: 10,
   },
 });
+

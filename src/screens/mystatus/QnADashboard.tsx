@@ -1,10 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
   TouchableOpacity,
   StyleSheet,
-  ScrollView,
+  FlatList,
   ActivityIndicator,
   SafeAreaView,
   Modal,
@@ -14,123 +14,155 @@ import RNPickerSelect from 'react-native-picker-select';
 import Icon from 'react-native-vector-icons/Ionicons';
 import { getRequest } from '../../api/apiManager';
 
-// 더미 데이터
-const dummyQaData = [
-  {
-    createAt: "2024.12.24",
-    title: "개굴개굴 개굴이",
-    child: "금이",
-    details: [
-      "Q1. 개구리들이 비가 오는 날에 무엇을 하려고 했나요?\n예시 답안) 개구리들은 비가 오는 날에 놀려고 했어요.\n자녀 답안) 개구리들은 즐겁게 연못에서 놀려고 했어요",
-      "Q2. 황금이가 연못에 뭐가 떠다니고 있다고 외쳤나요?\n예시 답안) 황금이는 연못에 플라스틱 병이 떠다니고\n자녀 답안) 연못에는 플라스틱 병이 있었어요",
-      "Q3. 개구리들이 비가 오는 날에 무엇을 하려고 했나요?\n예시 답안) 개구리들은 비가 오는 날에 놀려고 했어요.\n자녀 답안) 개구리들은 즐겁게 연못에서 놀려고 했어요",
-    ],
-  },
-  {
-    createAt: "2024.12.12",
-    title: "신나는 모험 이야기",
-    child: "철수",
-    details: [
-      "Q1. 모험이란 무엇인가요?\n예시 답안) 새로운 도전\n자녀 답안) 게임!",
-      "Q2. 가장 기억에 남는 모험은?\n예시 답안) 숲 탐험\n자녀 답안) 공룡나라!",
-    ],
-  },
-  {
-    createAt: "2024.12.13",
-    title: "꿈꾸는 아이",
-    child: "영희",
-    details: [
-      "Q1. 꿈은 무엇인가요?\n예시 답안) 미래의 희망\n자녀 답안) 선생님!",
-      "Q2. 꿈을 이루기 위해 필요한 것은?\n예시 답안) 노력\n자녀 답안) 공부!",
-    ],
-  },
-];
+interface QnAItem {
+  id: string;
+  createAt: string;
+  title: string;
+  child: string;
+  details: string[];
+}
 
-const dummyChildrenData = [
-  { id: "1", name: "금쪽이" },
-  { id: "2", name: "철수" },
-  { id: "3", name: "영희" },
-];
+interface Child {
+  id: string;
+  name: string;
+}
 
 const QnADashboard = () => {
-  const [qaData, setQaData] = useState<any[]>([]);
-  const [children, setChildren] = useState<any[]>([]);
+  const [qaData, setQaData] = useState<QnAItem[]>([]);
+  const [children, setChildren] = useState<Child[]>([]);
   const [selectedChild, setSelectedChild] = useState<string | null>(null);
   const [tempSelectedChild, setTempSelectedChild] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<string[]>([]);
   const [modalVisible, setModalVisible] = useState(false);
-  const [pickerKey, setPickerKey] = useState(0); // 피커 리렌더링을 위한 키
-
-  const page = 0;
+  const [page, setPage] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  
   const size = 10;
 
-  // 초기 데이터 호출
-  const fetchInitialData = async () => {
+  const fetchChildren = async () => {
     try {
-      setLoading(true);
-
-      const [qaResponse, childrenResponse] = await Promise.all([
-        getRequest('/api/dashboard', { page, size }),
-        getRequest('/api/members/children'),
-      ]);
-
-      setQaData(qaResponse.content?.length > 0 ? qaResponse.content : dummyQaData); // 서버 데이터 없으면 더미 데이터 사용
-      setChildren(childrenResponse?.length > 0 ? childrenResponse : dummyChildrenData); // 서버 데이터 없으면 더미 데이터 사용
+      const response = await getRequest('/api/members/children');
+      setChildren(response || []);
     } catch (error) {
-      console.error('초기 데이터 요청 오류:', error);
-      setError('데이터를 불러오는 중 문제가 발생했습니다.');
-    } finally {
-      setLoading(false);
+      console.error('자녀 목록 가져오기 실패:', error);
     }
   };
 
-  // 특정 자녀 Q&A 데이터 호출
-  const fetchQnADataByChild = async (childId: string) => {
+  const fetchQnAData = async (pageNum: number, childId?: string | null) => {
     try {
-      setLoading(true);
-      const response = await getRequest(`/api/dashboard/${childId}`, { page, size });
-      setQaData(response.content?.length > 0 ? response.content : dummyQaData); // 서버 데이터 없으면 더미 데이터 사용
+      setLoadingMore(true);
+      const endpoint = childId 
+        ? `/api/dashboard/${childId}`
+        : '/api/dashboard';
+  
+      const response = await getRequest(endpoint, { page: pageNum, size });
+      
+      console.log('Fetched QnA Data:', response); // 디버깅 로그 추가
+  
+      const newData = response?.content || [];
+      setHasMore(newData.length === size);
+  
+      if (pageNum === 0) {
+        setQaData(newData);
+      } else {
+        setQaData(prev => [...prev, ...newData]);
+      }
     } catch (error) {
-      console.error('특정 자녀 Q&A 데이터 요청 오류:', error);
-      setError('Q&A 데이터를 불러오는 중 문제가 발생했습니다.');
+      console.error('Q&A 데이터 요청 오류:', error);
+      setError('데이터를 불러오는 중 문제가 발생했습니다.');
     } finally {
-      setLoading(false);
+      setLoadingMore(false);
     }
   };
 
   const handleValueChange = (value: string | null) => {
-    if (Platform.OS === 'android') {
-      handleSelection(value);
-    } else {
-      setTempSelectedChild(value);
-    }
+    // 플랫폼에 상관없이 즉시 tempSelectedChild를 업데이트
+    setTempSelectedChild(value);
   };
 
   const handleSelection = (value: string | null) => {
     setSelectedChild(value);
-    if (value) {
-      fetchQnADataByChild(value);
-    } else {
-      fetchInitialData();
+    setTempSelectedChild(null); // 선택 완료 후 임시 상태 초기화
+    setPage(0);
+    fetchQnAData(0, value);
+  };
+
+  useEffect(() => {
+    // selectedChild가 변경될 때 데이터를 새로 가져옴
+    fetchQnAData(0, selectedChild);
+  }, [selectedChild]);
+
+  const handleItemPress = async (qnaId: string) => {
+    try {
+      setLoadingMore(true);
+      const response = await getRequest(`/api/dashboard/detail/${qnaId}`);
+      
+      if (response && Array.isArray(response)) {
+        const details = response.map((item) => {
+          return `질문: ${item.question}\n예시 답변: ${item.sampleAnswer}\n답변: ${item.answer}`;
+        });
+        setSelectedDetails(details);
+        setModalVisible(true); // 모달 표시
+      } else {
+        alert('상세 데이터를 가져오지 못했습니다.');
+      }
+    } catch (error) {
+      console.error('상세보기 API 호출 오류:', error);
+      alert('상세 데이터를 가져오는 중 문제가 발생했습니다.');
+    } finally {
+      setLoadingMore(false);
     }
   };
 
-  const handleDone = () => {
-    handleSelection(tempSelectedChild);
+  const handleLoadMore = () => {
+    if (!loadingMore && hasMore) {
+      const nextPage = page + 1;
+      setPage(nextPage);
+      fetchQnAData(nextPage, selectedChild);
+    }
   };
 
-  // 항목 클릭 핸들러
-  const handleItemPress = (details: string[]) => {
-    setSelectedDetails(details);
-    setModalVisible(true);
+  const renderFooter = () => {
+    if (!loadingMore) return null;
+    return (
+      <View style={styles.footerLoader}>
+        <ActivityIndicator size="small" color="#6B66FF" />
+      </View>
+    );
   };
 
+  const renderItem = useCallback(({ item }: { item: QnAItem }) => {
+    console.log('Rendering Item:', item); // 디버깅 로그 추가
+  
+    return (
+      <TouchableOpacity
+        style={styles.qaCard}
+        onPress={() => {
+          console.log('Clicked QnA ID:', item.id); // 클릭된 QnA ID 확인
+          handleItemPress(item.id);
+        }}
+      >
+        <Text style={styles.qaDate}>{item.createAt}</Text>
+        <Text style={styles.qaTitle}>{item.title}</Text>
+        <Text style={styles.qaChild}>{item.child}</Text>
+      </TouchableOpacity>
+    );
+  }, []);
 
-  // 화면 첫 진입 시 초기 데이터 호출
   useEffect(() => {
-    fetchInitialData();
+    const initializeData = async () => {
+      setLoading(true);
+      await Promise.all([
+        fetchChildren(),
+        fetchQnAData(0)
+      ]);
+      setLoading(false);
+    };
+
+    initializeData();
   }, []);
 
   if (loading) {
@@ -155,9 +187,7 @@ const QnADashboard = () => {
         <View style={styles.filterButton}>
           <Icon name="filter" size={20} color="#666" />
           <RNPickerSelect
-            key={pickerKey}
-            onValueChange={(value) => handleSelection(value)} // 선택 즉시 반영
-            onDonePress={() => handleSelection(tempSelectedChild)} // iOS의 Done 버튼 처리
+            onValueChange={(value) => setSelectedChild(value)} // 선택한 값을 selectedChild에 저장
             items={[
               { label: '전체', value: null },
               ...children.map((child) => ({
@@ -165,14 +195,14 @@ const QnADashboard = () => {
                 value: child.id,
               })),
             ]}
-            value={selectedChild} // 선택된 값 표시
+            value={selectedChild} // 현재 선택된 값 유지
             style={{
               ...pickerSelectStyles,
               inputIOSContainer: styles.pickerContainer,
               inputAndroidContainer: styles.pickerContainer,
             }}
             placeholder={{ label: '자녀별로 확인하기', value: null }}
-            useNativeAndroidPickerStyle={false} // Android 스타일 커스터마이즈
+            useNativeAndroidPickerStyle={false}
             textInputProps={{
               numberOfLines: 1,
             }}
@@ -180,21 +210,16 @@ const QnADashboard = () => {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContainer}>
-        {qaData.map((qa, index) => (
-          <TouchableOpacity
-            key={index}
-            style={styles.qaCard}
-            onPress={() => handleItemPress(qa.details || [])}
-          >
-            <Text style={styles.qaDate}>{qa.createAt}</Text>
-            <Text style={styles.qaTitle}>{qa.title}</Text>
-            <Text style={styles.qaChild}>{qa.child}</Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+      <FlatList
+        data={qaData}
+        renderItem={renderItem}
+        keyExtractor={(item, index) => item.id || index.toString()}
+        contentContainerStyle={styles.listContainer}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+      />
 
-      {/* Q&A 상세 모달 */}
       <Modal
         visible={modalVisible}
         transparent={true}
@@ -208,11 +233,14 @@ const QnADashboard = () => {
             >
               <Text style={styles.closeButtonText}>X</Text>
             </TouchableOpacity>
-            <ScrollView style={styles.modalScroll}>
-              {selectedDetails.map((detail, index) => {
-                const [question, ...answers] = detail.split('\n');
+            <FlatList
+              data={selectedDetails}
+              keyExtractor={(_, index) => index.toString()}
+              contentContainerStyle={styles.modalScroll}
+              renderItem={({ item }) => {
+                const [question, ...answers] = item.split('\n');
                 return (
-                  <View key={index} style={styles.qaItem}>
+                  <View style={styles.qaItem}>
                     <Text style={styles.questionText}>{question}</Text>
                     {answers.map((answer, answerIndex) => (
                       <Text key={answerIndex} style={styles.answerText}>
@@ -221,8 +249,8 @@ const QnADashboard = () => {
                     ))}
                   </View>
                 );
-              })}
-            </ScrollView>
+              }}
+            />
           </View>
         </View>
       </Modal>
@@ -253,12 +281,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  pickerText: {
-    fontSize: 14,
-    color: '#666',
-    paddingRight: 24, // 아이콘을 위한 공간
-  },
-  scrollContainer: {
+  listContainer: {
     padding: 16,
   },
   qaCard: {
@@ -300,7 +323,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   modalScroll: {
-    marginTop: 8,
+    paddingTop: 8,
   },
   closeButton: {
     alignSelf: 'flex-end',
@@ -340,6 +363,10 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#FF4B4B',
     textAlign: 'center',
+  },
+  footerLoader: {
+    paddingVertical: 20,
+    alignItems: 'center',
   },
 });
 

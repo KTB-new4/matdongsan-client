@@ -82,20 +82,23 @@ const ChildrenStatus = () => {
         <View style={styles.editContainer}>
           <TextInput
             style={styles.input}
-            placeholder="자녀 이름"
+            placeholder="자녀 이름을 입력하세요"
+            placeholderTextColor="#999"
             value={editingChild.name}
             onChangeText={(text) => setEditingChild({ ...editingChild, name: text })}
           />
           <View style={styles.ageInputsRow}>
             <TextInput
               style={[styles.input, styles.ageInput]}
-              placeholder="한글 연령"
+              placeholder="한글 연령 (예: 5세)"
+              placeholderTextColor="#999"
               value={editingChild.koreanAge}
               onChangeText={(text) => setEditingChild({ ...editingChild, koreanAge: text })}
             />
             <TextInput
               style={[styles.input, styles.ageInput]}
-              placeholder="영어 연령"
+              placeholder="영어 연령 (예: Level 2)"
+              placeholderTextColor="#999"
               value={editingChild.englishAge}
               onChangeText={(text) => setEditingChild({ ...editingChild, englishAge: text })}
             />
@@ -168,20 +171,23 @@ const ChildrenStatus = () => {
           <View style={styles.addCard}>
             <TextInput
               style={styles.input}
-              placeholder="자녀 이름"
+              placeholder="자녀 이름을 입력하세요"
+              placeholderTextColor="#999"
               value={newChild.name}
               onChangeText={(text) => setNewChild({ ...newChild, name: text })}
             />
             <View style={styles.ageInputsRow}>
               <TextInput
                 style={[styles.input, styles.ageInput]}
-                placeholder="한글 연령"
+                placeholder="한글 연령 (예: 5)"
+                placeholderTextColor="#999"
                 value={newChild.koreanAge}
                 onChangeText={(text) => setNewChild({ ...newChild, koreanAge: text })}
               />
               <TextInput
                 style={[styles.input, styles.ageInput]}
-                placeholder="영어 연령"
+                placeholder="영어 연령 (예: 3)"
+                placeholderTextColor="#999"
                 value={newChild.englishAge}
                 onChangeText={(text) => setNewChild({ ...newChild, englishAge: text })}
               />
