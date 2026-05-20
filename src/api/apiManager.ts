@@ -91,7 +91,7 @@ export const patchRequest = async (endpoint: string, data = {}, headers = {}) =>
       : { ...headers };
 
     // 헤더 로그 추가
-    console.log('POST 요청 헤더:', finalHeaders);
+    console.log('PATCH 요청 헤더:', finalHeaders);
 
     const response = await api.patch(endpoint, data, {
       headers: finalHeaders,

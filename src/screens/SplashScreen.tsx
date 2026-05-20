@@ -38,7 +38,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff', // 필요 시 배경색을 변경하세요
+    backgroundColor: '#fff',
     },
     logo: {
         width: 150,

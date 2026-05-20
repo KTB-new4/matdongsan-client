@@ -142,9 +142,6 @@ const HomeScreen = ({ navigation }: any) => {
             }
           }}
         />
-        {/* <TouchableOpacity style={styles.generateButton} onPress={handleGenerate}>
-          <Text style={styles.generateButtonText}>생성</Text>
-        </TouchableOpacity> */}
       </View>
 
       {/* Story Prompts */}
